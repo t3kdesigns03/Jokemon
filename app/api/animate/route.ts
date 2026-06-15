@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import * as fal from '@fal-ai/client'
+import { fal } from '@fal-ai/client'
 import { buildVideoPrompt, type Element, type EvolutionTier } from '@/lib/evolution'
 
 fal.config({ credentials: process.env.FAL_API_KEY })
