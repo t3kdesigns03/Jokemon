@@ -318,12 +318,12 @@ export default function Home() {
         </button>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-10 space-y-8">
+      <main className="max-w-2xl mx-auto px-4 sm:px-6 py-6 sm:py-10 space-y-6 sm:space-y-8">
 
         {/* ── Hero ── */}
         {phase === 'upload' && (
           <div className="text-center space-y-3 animate-[reveal_0.6s_ease-out]">
-            <h1 className="text-5xl font-black tracking-tight">
+            <h1 className="text-4xl sm:text-5xl font-black tracking-tight">
               Evolve Your{' '}
               <span className="shimmer-text">Pet</span>
             </h1>
@@ -338,7 +338,7 @@ export default function Home() {
           <div
             {...getRootProps()}
             className={`
-              relative rounded-3xl border-2 border-dashed p-16 text-center cursor-pointer transition-all duration-300
+              relative rounded-3xl border-2 border-dashed p-10 sm:p-16 text-center cursor-pointer transition-all duration-300
               ${isDragActive
                 ? 'border-white/60 bg-white/10 scale-[1.02]'
                 : 'border-white/20 bg-white/3 hover:border-white/40 hover:bg-white/5'
@@ -387,7 +387,7 @@ export default function Home() {
 
             <div>
               <h2 className="text-2xl font-black text-center mb-6">Choose Your Element</h2>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {(['water', 'fire', 'wind'] as Element[]).map(el => (
                   <ElementCard
                     key={el}
