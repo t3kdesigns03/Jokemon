@@ -20,13 +20,12 @@ export async function POST(req: NextRequest) {
     const prompt = buildVideoPrompt(element, tier)
 
     // Use Kling v1.6 standard image-to-video
-    const result = await fal.run('fal-ai/kling-video/v1.6/standard/image-to-video', {
+    const result = await fal.subscribe('fal-ai/kling-video/v1.6/standard/image-to-video', {
       input: {
         image_url: joKemonImageUrl,
         prompt,
         duration: '5',
-        aspect_ratio: '1:1',
-      },
+      } as Record<string, unknown>,
     }) as { data: { video: { url: string } } }
 
     const videoUrl = result.data?.video?.url

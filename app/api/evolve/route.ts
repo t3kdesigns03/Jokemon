@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     const petImageUrl = imageUrl ?? `data:image/jpeg;base64,${imageBase64}`
 
     // Use FLUX Dev image-to-image for style transfer
-    const result = await fal.run('fal-ai/flux/dev/image-to-image', {
+    const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
       input: {
         image_url: petImageUrl,
         prompt,
