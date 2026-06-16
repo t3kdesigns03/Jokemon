@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildEvolutionPrompt, rollEvolutionTier, type Element, type EvolutionTier } from '@/lib/evolution'
 
-const XAI_KEY = process.env.XAI_API_KEY ?? ''
-const XAI_BASE = 'https://api.x.ai/v1'
+const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   try {
@@ -16,73 +15,39 @@ export async function POST(req: NextRequest) {
 
     if (!element) return NextResponse.json({ error: 'Element is required' }, { status: 400 })
     if (!imageBase64 && !imageUrl) return NextResponse.json({ error: 'Image is required' }, { status: 400 })
-    if (!XAI_KEY) return NextResponse.json({ error: 'XAI API key not configured' }, { status: 500 })
+    if (!FAL_KEY) return NextResponse.json({ error: 'FAL API key not configured' }, { status: 500 })
 
     const tier = forceTier ?? rollEvolutionTier()
+    const prompt = buildEvolutionPrompt(element, tier)
+    const petImageUrl = imageUrl ?? `data:image/jpeg;base64,${imageBase64}`
+    const strength = tier === 'legendary' ? 0.95 : tier === 'champion' ? 0.88 : tier === 'evolved' ? 0.82 : 0.78
 
-    // Step 1: Use Grok Vision to describe the pet
-    const imageContent = imageUrl
-      ? { type: 'image_url', image_url: { url: imageUrl } }
-      : { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${imageBase64}` } }
-
-    const visionRes = await fetch(`${XAI_BASE}/chat/completions`, {
+    // Just SUBMIT to queue and return immediately — client will poll
+    const submitRes = await fetch('https://queue.fal.run/fal-ai/flux/dev/image-to-image', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${XAI_KEY}`,
+        'Authorization': `Key ${FAL_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'grok-2-vision-latest',
-        messages: [{
-          role: 'user',
-          content: [
-            imageContent,
-            {
-              type: 'text',
-              text: 'Describe this pet in detail for a creature design artist: species, breed, fur/coat color and pattern, eye color, size, distinctive features, and overall vibe. Be specific and vivid. 2-3 sentences max.',
-            },
-          ],
-        }],
-        max_tokens: 200,
+        image_url: petImageUrl,
+        prompt,
+        strength,
+        num_inference_steps: 28,
+        guidance_scale: 3.5,
+        num_images: 1,
+        enable_safety_checker: true,
       }),
     })
 
-    let petDescription = 'a cute pet'
-    if (visionRes.ok) {
-      const visionData = await visionRes.json()
-      petDescription = visionData.choices?.[0]?.message?.content ?? petDescription
+    if (!submitRes.ok) {
+      const errText = await submitRes.text()
+      throw new Error(`fal.ai submit failed (${submitRes.status}): ${errText}`)
     }
 
-    // Step 2: Build the JokeMon prompt using the pet description + evolution data
-    const basePrompt = buildEvolutionPrompt(element, tier)
-    const fullPrompt = `${basePrompt}. Based on this real pet: ${petDescription}`
+    const { request_id } = await submitRes.json()
 
-    // Step 3: Generate JokeMon with Grok Aurora
-    const imageRes = await fetch(`${XAI_BASE}/images/generations`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${XAI_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'grok-2-image',
-        prompt: fullPrompt,
-        n: 1,
-        response_format: 'url',
-      }),
-    })
-
-    if (!imageRes.ok) {
-      const errText = await imageRes.text()
-      throw new Error(`xAI image gen failed (${imageRes.status}): ${errText}`)
-    }
-
-    const imageData = await imageRes.json()
-    const joKemonImageUrl = imageData.data?.[0]?.url
-
-    if (!joKemonImageUrl) throw new Error('No image returned from xAI')
-
-    return NextResponse.json({ success: true, tier, joKemonImageUrl, prompt: fullPrompt })
+    return NextResponse.json({ success: true, tier, requestId: request_id, prompt })
   } catch (err) {
     console.error('Evolution error:', err)
     const message = err instanceof Error ? err.message : 'Evolution failed'

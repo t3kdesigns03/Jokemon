@@ -226,9 +226,9 @@ export default function Home() {
     setError(null)
 
     try {
-      // Convert to base64
       const base64 = await fileToBase64(petFile)
 
+      // Submit job
       const res = await fetch('/api/evolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -238,7 +238,10 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Evolution failed')
 
-      setResult({ tier: data.tier, joKemonImageUrl: data.joKemonImageUrl })
+      // Poll for result from the browser
+      const joKemonImageUrl = await pollForResult(data.requestId, 'fal-ai/flux/dev/image-to-image', 'imageUrl')
+
+      setResult({ tier: data.tier, joKemonImageUrl })
       setPhase('reveal')
 
       // Try to persist to Supabase (non-blocking)
@@ -277,7 +280,9 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Animation failed')
 
-      setResult(prev => prev ? { ...prev, videoUrl: data.videoUrl } : prev)
+      const videoUrl = await pollForResult(data.requestId, 'fal-ai/kling-video/v1.6/standard/image-to-video', 'videoUrl')
+
+      setResult(prev => prev ? { ...prev, videoUrl } : prev)
       setPhase('done')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Video generation failed')
@@ -616,6 +621,22 @@ export default function Home() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
+
+async function pollForResult(requestId: string, model: string, resultKey: 'imageUrl' | 'videoUrl'): Promise<string> {
+  for (let i = 0; i < 120; i++) {
+    await new Promise(r => setTimeout(r, 3000))
+    const res = await fetch(`/api/status?requestId=${requestId}&model=${encodeURIComponent(model)}`)
+    if (!res.ok) continue
+    const data = await res.json()
+    if (data.status === 'COMPLETED') {
+      const url = data[resultKey]
+      if (url) return url
+      throw new Error('No result URL in completed response')
+    }
+    if (data.status === 'FAILED') throw new Error(data.error ?? 'Generation failed')
+  }
+  throw new Error('Timed out waiting for result')
+}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

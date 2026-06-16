@@ -40,33 +40,10 @@ export async function POST(req: NextRequest) {
 
     const { request_id } = await submitRes.json()
 
-    // Poll for result
-    let videoUrl: string | null = null
-    for (let i = 0; i < 90; i++) {
-      await sleep(3000)
-      const pollRes = await fetch(
-        `https://queue.fal.run/fal-ai/kling-video/v1.6/standard/image-to-video/requests/${request_id}`,
-        { headers: { 'Authorization': `Key ${FAL_KEY}` } }
-      )
-      if (!pollRes.ok) continue
-      const pollData = await pollRes.json()
-      if (pollData.status === 'COMPLETED') {
-        videoUrl = pollData.output?.video?.url ?? null
-        break
-      }
-      if (pollData.status === 'FAILED') throw new Error('fal.ai video generation failed')
-    }
-
-    if (!videoUrl) throw new Error('Timed out waiting for video')
-
-    return NextResponse.json({ success: true, videoUrl })
+    return NextResponse.json({ success: true, requestId: request_id })
   } catch (err) {
     console.error('Animation error:', err)
     const message = err instanceof Error ? err.message : 'Animation failed'
     return NextResponse.json({ error: message }, { status: 500 })
   }
-}
-
-function sleep(ms: number) {
-  return new Promise(resolve => setTimeout(resolve, ms))
 }
