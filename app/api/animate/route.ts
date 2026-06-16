@@ -4,6 +4,13 @@ import { buildVideoPrompt, type Element, type EvolutionTier } from '@/lib/evolut
 
 fal.config({ credentials: process.env.FAL_API_KEY })
 
+type KlingInput = {
+  image_url: string
+  prompt: string
+  duration: string
+  aspect_ratio: string
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
@@ -19,13 +26,16 @@ export async function POST(req: NextRequest) {
 
     const prompt = buildVideoPrompt(element, tier)
 
-    // Use Kling v1.6 standard image-to-video
+    const input: KlingInput = {
+      image_url: joKemonImageUrl,
+      prompt,
+      duration: '5',
+      aspect_ratio: '1:1',
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await fal.subscribe('fal-ai/kling-video/v1.6/standard/image-to-video', {
-      input: {
-        image_url: joKemonImageUrl,
-        prompt,
-        duration: '5',
-      } as Record<string, unknown>,
+      input: input as any,
     }) as { data: { video: { url: string } } }
 
     const videoUrl = result.data?.video?.url
