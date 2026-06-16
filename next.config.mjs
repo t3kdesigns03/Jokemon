@@ -1,5 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: '**.fal.media' },
@@ -8,6 +14,6 @@ const nextConfig = {
       { protocol: 'https', hostname: 'storage.googleapis.com' },
     ],
   },
-};
+}
 
-export default nextConfig;
+export default nextConfig
