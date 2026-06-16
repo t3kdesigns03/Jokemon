@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fal } from '@fal-ai/client'
 import { buildEvolutionPrompt, rollEvolutionTier, type Element, type EvolutionTier } from '@/lib/evolution'
 
-// Configure fal client
-fal.config({ credentials: process.env.FAL_API_KEY })
+const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   try {
@@ -15,47 +13,72 @@ export async function POST(req: NextRequest) {
       forceTier?: EvolutionTier
     }
 
-    if (!element) {
-      return NextResponse.json({ error: 'Element is required' }, { status: 400 })
-    }
-    if (!imageBase64 && !imageUrl) {
-      return NextResponse.json({ error: 'Image is required' }, { status: 400 })
-    }
+    if (!element) return NextResponse.json({ error: 'Element is required' }, { status: 400 })
+    if (!imageBase64 && !imageUrl) return NextResponse.json({ error: 'Image is required' }, { status: 400 })
+    if (!FAL_KEY) return NextResponse.json({ error: 'FAL API key not configured' }, { status: 500 })
 
-    // Roll the tier (or use forced tier for testing)
     const tier = forceTier ?? rollEvolutionTier()
     const prompt = buildEvolutionPrompt(element, tier)
-
-    // Build the image URL/data URI for fal
     const petImageUrl = imageUrl ?? `data:image/jpeg;base64,${imageBase64}`
 
-    // Use FLUX Dev image-to-image for style transfer
-    const result = await fal.subscribe('fal-ai/flux/dev/image-to-image', {
-      input: {
+    const strength =
+      tier === 'legendary' ? 0.95
+      : tier === 'champion' ? 0.88
+      : tier === 'evolved' ? 0.82
+      : 0.78
+
+    // Submit to fal.ai queue
+    const submitRes = await fetch('https://queue.fal.run/fal-ai/flux/dev/image-to-image', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
         image_url: petImageUrl,
         prompt,
-        strength: tier === 'legendary' ? 0.95 : tier === 'champion' ? 0.88 : tier === 'evolved' ? 0.82 : 0.78,
+        strength,
         num_inference_steps: 28,
         guidance_scale: 3.5,
         num_images: 1,
         enable_safety_checker: true,
-      },
-    }) as { data: { images: Array<{ url: string }> } }
+      }),
+    })
 
-    const joKemonImageUrl = result.data.images?.[0]?.url
-    if (!joKemonImageUrl) {
-      throw new Error('No image returned from fal.ai')
+    if (!submitRes.ok) {
+      const errText = await submitRes.text()
+      throw new Error(`fal.ai submit failed (${submitRes.status}): ${errText}`)
     }
 
-    return NextResponse.json({
-      success: true,
-      tier,
-      joKemonImageUrl,
-      prompt,
-    })
+    const { request_id } = await submitRes.json()
+
+    // Poll for result
+    let joKemonImageUrl: string | null = null
+    for (let i = 0; i < 60; i++) {
+      await sleep(2000)
+      const pollRes = await fetch(
+        `https://queue.fal.run/fal-ai/flux/dev/image-to-image/requests/${request_id}`,
+        { headers: { 'Authorization': `Key ${FAL_KEY}` } }
+      )
+      if (!pollRes.ok) continue
+      const pollData = await pollRes.json()
+      if (pollData.status === 'COMPLETED') {
+        joKemonImageUrl = pollData.output?.images?.[0]?.url ?? null
+        break
+      }
+      if (pollData.status === 'FAILED') throw new Error('fal.ai generation failed')
+    }
+
+    if (!joKemonImageUrl) throw new Error('Timed out waiting for image')
+
+    return NextResponse.json({ success: true, tier, joKemonImageUrl, prompt })
   } catch (err) {
     console.error('Evolution error:', err)
     const message = err instanceof Error ? err.message : 'Evolution failed'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }

@@ -1,15 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fal } from '@fal-ai/client'
 import { buildVideoPrompt, type Element, type EvolutionTier } from '@/lib/evolution'
 
-fal.config({ credentials: process.env.FAL_API_KEY })
-
-type KlingInput = {
-  image_url: string
-  prompt: string
-  duration: string
-  aspect_ratio: string
-}
+const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? ''
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,25 +15,49 @@ export async function POST(req: NextRequest) {
     if (!joKemonImageUrl || !element || !tier) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
+    if (!FAL_KEY) return NextResponse.json({ error: 'FAL API key not configured' }, { status: 500 })
 
     const prompt = buildVideoPrompt(element, tier)
 
-    const input: KlingInput = {
-      image_url: joKemonImageUrl,
-      prompt,
-      duration: '5',
-      aspect_ratio: '1:1',
+    const submitRes = await fetch('https://queue.fal.run/fal-ai/kling-video/v1.6/standard/image-to-video', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Key ${FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        image_url: joKemonImageUrl,
+        prompt,
+        duration: '5',
+        aspect_ratio: '1:1',
+      }),
+    })
+
+    if (!submitRes.ok) {
+      const errText = await submitRes.text()
+      throw new Error(`fal.ai submit failed (${submitRes.status}): ${errText}`)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const result = await fal.subscribe('fal-ai/kling-video/v1.6/standard/image-to-video', {
-      input: input as any,
-    }) as { data: { video: { url: string } } }
+    const { request_id } = await submitRes.json()
 
-    const videoUrl = result.data?.video?.url
-    if (!videoUrl) {
-      throw new Error('No video returned from fal.ai')
+    // Poll for result
+    let videoUrl: string | null = null
+    for (let i = 0; i < 90; i++) {
+      await sleep(3000)
+      const pollRes = await fetch(
+        `https://queue.fal.run/fal-ai/kling-video/v1.6/standard/image-to-video/requests/${request_id}`,
+        { headers: { 'Authorization': `Key ${FAL_KEY}` } }
+      )
+      if (!pollRes.ok) continue
+      const pollData = await pollRes.json()
+      if (pollData.status === 'COMPLETED') {
+        videoUrl = pollData.output?.video?.url ?? null
+        break
+      }
+      if (pollData.status === 'FAILED') throw new Error('fal.ai video generation failed')
     }
+
+    if (!videoUrl) throw new Error('Timed out waiting for video')
 
     return NextResponse.json({ success: true, videoUrl })
   } catch (err) {
@@ -49,4 +65,8 @@ export async function POST(req: NextRequest) {
     const message = err instanceof Error ? err.message : 'Animation failed'
     return NextResponse.json({ error: message }, { status: 500 })
   }
+}
+
+function sleep(ms: number) {
+  return new Promise(resolve => setTimeout(resolve, ms))
 }
