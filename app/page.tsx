@@ -623,8 +623,8 @@ export default function Home() {
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 async function pollForResult(requestId: string, model: string, resultKey: 'imageUrl' | 'videoUrl'): Promise<string> {
-  for (let i = 0; i < 120; i++) {
-    await new Promise(r => setTimeout(r, 3000))
+  for (let i = 0; i < 60; i++) {
+    await new Promise(r => setTimeout(r, 2000))
     const res = await fetch(`/api/status?requestId=${requestId}&model=${encodeURIComponent(model)}`)
     if (!res.ok) continue
     const data = await res.json()

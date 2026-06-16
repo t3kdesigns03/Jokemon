@@ -4,7 +4,7 @@ import { buildEvolutionPrompt, rollEvolutionTier, type Element, type EvolutionTi
 export const maxDuration = 15 // Just enough to submit — no polling here
 
 const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? ''
-const MODEL = 'fal-ai/flux/dev/image-to-image'
+const MODEL = 'fal-ai/flux/schnell/image-to-image'
 
 export async function POST(req: NextRequest) {
   try {
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
         image_url: petImageUrl,
         prompt,
         strength: 0.80,
-        num_inference_steps: 8,
+        num_inference_steps: 4,
         num_images: 1,
         enable_safety_checker: true,
       }),
