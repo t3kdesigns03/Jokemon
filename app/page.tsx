@@ -238,7 +238,10 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Evolution failed')
 
-      setResult({ tier: data.tier, joKemonImageUrl: data.joKemonImageUrl })
+      // Poll from browser — no server timeout risk
+      const joKemonImageUrl = await pollForResult(data.requestId, data.model, 'imageUrl')
+
+      setResult({ tier: data.tier, joKemonImageUrl })
       setPhase('reveal')
 
       // Try to persist to Supabase (non-blocking)
