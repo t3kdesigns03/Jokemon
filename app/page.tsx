@@ -238,10 +238,7 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Evolution failed')
 
-      // Poll for result from the browser
-      const joKemonImageUrl = await pollForResult(data.requestId, 'fal-ai/flux/dev/image-to-image', 'imageUrl')
-
-      setResult({ tier: data.tier, joKemonImageUrl })
+      setResult({ tier: data.tier, joKemonImageUrl: data.joKemonImageUrl })
       setPhase('reveal')
 
       // Try to persist to Supabase (non-blocking)
