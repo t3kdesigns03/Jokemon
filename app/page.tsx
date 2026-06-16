@@ -279,9 +279,8 @@ export default function Home() {
       const data = await res.json()
       if (!res.ok || data.error) throw new Error(data.error || 'Evolution failed')
 
-      const joKemonImageUrl = await pollForResult(data.requestId, data.model)
-
-      setResult({ tier: data.tier, joKemonImageUrl })
+      // Synchronous — result is directly in the response
+      setResult({ tier: data.tier, joKemonImageUrl: data.joKemonImageUrl })
       setPhase('reveal')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Something went wrong')
@@ -473,22 +472,6 @@ export default function Home() {
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-async function pollForResult(requestId: string, model: string): Promise<string> {
-  for (let i = 0; i < 90; i++) {
-    await new Promise(r => setTimeout(r, 2000))
-    const res = await fetch(`/api/status?requestId=${requestId}&model=${encodeURIComponent(model)}`)
-    if (!res.ok) continue
-    const data = await res.json()
-    if (data.status === 'COMPLETED') {
-      const url = data.imageUrl
-      if (url) return url
-      throw new Error('No image URL in completed response')
-    }
-    if (data.status === 'FAILED') throw new Error(data.error ?? 'Generation failed')
-  }
-  throw new Error('Timed out waiting for result')
-}
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

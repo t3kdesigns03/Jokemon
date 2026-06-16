@@ -1,30 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { buildEvolutionPrompt, rollEvolutionTier, type Element, type EvolutionTier } from '@/lib/evolution'
 
-export const maxDuration = 30
+export const maxDuration = 60
 
 const FAL_KEY = process.env.FAL_KEY ?? process.env.FAL_API_KEY ?? ''
-const MODEL = 'fal-ai/flux/schnell/image-to-image'
+const MODEL = 'fal-ai/flux/dev/image-to-image'
 
 async function uploadImageToFal(base64: string, mimeType: string): Promise<string> {
   const buffer = Buffer.from(base64, 'base64')
-  const uploadRes = await fetch('https://fal.run/files/upload', {
+  const res = await fetch('https://fal.run/files/upload', {
     method: 'POST',
     headers: {
       'Authorization': `Key ${FAL_KEY}`,
       'Content-Type': mimeType,
-      'Accept': 'application/json',
     },
     body: buffer,
   })
-  if (!uploadRes.ok) {
-    const err = await uploadRes.text()
-    throw new Error(`Image upload failed (${uploadRes.status}): ${err}`)
-  }
-  const json = await uploadRes.json()
-  // fal returns { url: "https://..." }
-  const url = json.url ?? json.file_url ?? json.cdn_url
-  if (!url) throw new Error('No URL returned from fal.ai upload')
+  if (!res.ok) throw new Error(`Upload failed (${res.status}): ${await res.text()}`)
+  const json = await res.json()
+  const url = json.url ?? json.file_url
+  if (!url) throw new Error('No URL from fal.ai upload')
   return url
 }
 
@@ -46,36 +41,43 @@ export async function POST(req: NextRequest) {
     const tier = forceTier ?? rollEvolutionTier()
     const prompt = buildEvolutionPrompt(element, tier)
 
-    // Upload to fal.ai CDN first — data URLs cause timeouts
+    // Step 1: Upload image to fal.ai CDN
     let petImageUrl = imageUrl
     if (!petImageUrl && imageBase64) {
       petImageUrl = await uploadImageToFal(imageBase64, mimeType)
     }
 
-    // Submit to queue — returns immediately with request_id
-    const submitRes = await fetch(`https://queue.fal.run/${MODEL}`, {
+    // Step 2: Call SYNCHRONOUS endpoint — waits for result, no polling needed
+    const falRes = await fetch(`https://fal.run/${MODEL}`, {
       method: 'POST',
-      headers: { 'Authorization': `Key ${FAL_KEY}`, 'Content-Type': 'application/json' },
+      headers: {
+        'Authorization': `Key ${FAL_KEY}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify({
         image_url: petImageUrl,
         prompt,
-        strength: 0.82,
-        num_inference_steps: 4,
+        strength: 0.80,
+        num_inference_steps: 8,
         num_images: 1,
         enable_safety_checker: true,
       }),
     })
 
-    if (!submitRes.ok) {
-      const errText = await submitRes.text()
-      throw new Error(`fal.ai submit error (${submitRes.status}): ${errText}`)
+    if (!falRes.ok) {
+      const errText = await falRes.text()
+      throw new Error(`fal.ai error (${falRes.status}): ${errText}`)
     }
 
-    const submitted = await submitRes.json()
-    const requestId = submitted.request_id
-    if (!requestId) throw new Error('No request_id from fal.ai')
+    const result = await falRes.json()
+    const joKemonImageUrl = result.images?.[0]?.url ?? result.output?.images?.[0]?.url
 
-    return NextResponse.json({ success: true, tier, requestId, model: MODEL })
+    if (!joKemonImageUrl) {
+      console.error('fal.ai result shape:', JSON.stringify(result).slice(0, 500))
+      throw new Error('No image URL in fal.ai response')
+    }
+
+    return NextResponse.json({ success: true, tier, joKemonImageUrl })
   } catch (err) {
     console.error('Evolution error:', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Evolution failed' }, { status: 500 })
