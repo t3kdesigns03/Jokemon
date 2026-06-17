@@ -267,13 +267,13 @@ export default function Home() {
     setError(null)
 
     try {
-      const base64 = await fileToBase64(petFile)
-      const mimeType = petFile.type || 'image/jpeg'
+      // Compress to max 1024px before sending — keeps payload small
+      const base64 = await compressImage(petFile, 1024, 0.85)
 
       const res = await fetch('/api/evolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, element, mimeType }),
+        body: JSON.stringify({ imageBase64: base64, element }),
       })
 
       const data = await res.json()
@@ -473,14 +473,26 @@ export default function Home() {
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-function fileToBase64(file: File): Promise<string> {
+function compressImage(file: File, maxDim: number, quality: number): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.readAsDataURL(file)
-    reader.onload = () => {
-      const result = reader.result as string
-      resolve(result.split(',')[1])
+    const img = document.createElement('img')
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      let { width, height } = img
+      if (width > maxDim || height > maxDim) {
+        if (width > height) { height = Math.round(height * maxDim / width); width = maxDim }
+        else { width = Math.round(width * maxDim / height); height = maxDim }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, width, height)
+      const dataUrl = canvas.toDataURL('image/jpeg', quality)
+      resolve(dataUrl.split(',')[1])
     }
-    reader.onerror = reject
+    img.onerror = reject
+    img.src = url
   })
 }
