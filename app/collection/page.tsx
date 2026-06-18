@@ -33,7 +33,6 @@ export default function CollectionPage() {
   const [filter, setFilter] = useState<Filter>('all')
   const [elemFilter, setElemFilter] = useState<ElemFilter>('all')
   const [sort, setSort] = useState<Sort>('newest')
-  const [selected, setSelected] = useState<CollectionCard | null>(null)
   const [viewing3D, setViewing3D] = useState<CollectionCard | null>(null)
   const [gridKey, setGridKey] = useState(0)
 
@@ -62,12 +61,10 @@ export default function CollectionPage() {
 
   function onToggleFav(id: string) {
     setCards(toggleFavorite(id))
-    if (selected?.id === id) setSelected(prev => prev ? { ...prev, isFavorite: !prev.isFavorite } : null)
   }
 
   function onRemove(id: string) {
     setCards(removeCard(id))
-    setSelected(null)
   }
 
   return (
@@ -225,20 +222,52 @@ export default function CollectionPage() {
           }}
         >
           {filtered.map(card => (
-            <motion.div key={card.id} variants={cardVariants} style={{ position: 'relative' }}>
-              <JokeMonCard card={card} compact onClick={() => setSelected(card)} />
-              {card.isFavorite && (
-                <motion.div
-                  initial={{ scale: 0 }} animate={{ scale: 1 }}
+            <motion.div key={card.id} variants={cardVariants} style={{ position: 'relative' }}
+              className="group"
+            >
+              <JokeMonCard card={card} compact onClick={() => setViewing3D(card)} />
+
+              {/* Hover action bar */}
+              <motion.div
+                initial={{ opacity: 0 }} whileHover={{ opacity: 1 }}
+                style={{
+                  position: 'absolute', bottom: 6, left: '50%', transform: 'translateX(-50%)',
+                  display: 'flex', gap: 4, pointerEvents: 'none',
+                }}
+                className="group-hover:pointer-events-auto"
+              >
+                <button
+                  onClick={e => { e.stopPropagation(); onToggleFav(card.id) }}
                   style={{
-                    position: 'absolute', top: 6, right: 6,
-                    width: 16, height: 16, borderRadius: '50%',
-                    background: '#f43f5e', fontSize: 10,
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: '3px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700,
+                    border: `1px solid ${card.isFavorite ? '#f43f5e' : 'rgba(255,255,255,0.25)'}`,
+                    background: card.isFavorite ? 'rgba(244,63,94,0.3)' : 'rgba(0,0,0,0.6)',
+                    color: card.isFavorite ? '#f43f5e' : 'rgba(255,255,255,0.7)',
+                    cursor: 'pointer', backdropFilter: 'blur(4px)', pointerEvents: 'all',
                   }}
                 >
-                  ♥
-                </motion.div>
+                  {card.isFavorite ? '♥' : '♡'}
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); onRemove(card.id) }}
+                  style={{
+                    padding: '3px 8px', borderRadius: 6, fontSize: 11,
+                    border: '1px solid rgba(239,68,68,0.3)', background: 'rgba(0,0,0,0.6)',
+                    color: 'rgba(239,68,68,0.6)', cursor: 'pointer', backdropFilter: 'blur(4px)', pointerEvents: 'all',
+                  }}
+                >
+                  🗑
+                </button>
+              </motion.div>
+
+              {card.isFavorite && (
+                <div style={{
+                  position: 'absolute', top: 6, right: 6,
+                  width: 16, height: 16, borderRadius: '50%',
+                  background: '#f43f5e', fontSize: 10,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  pointerEvents: 'none',
+                }}>♥</div>
               )}
             </motion.div>
           ))}
@@ -253,119 +282,6 @@ export default function CollectionPage() {
           No cards match your filters.
         </motion.div>
       )}
-
-      {/* ── Modal ── */}
-      <AnimatePresence>
-        {selected && (
-          <motion.div
-            key="modal"
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            style={{
-              position: 'fixed', inset: 0, zIndex: 100,
-              background: 'rgba(0,0,0,0.85)', backdropFilter: 'blur(8px)',
-              display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
-              padding: '16px 8px', overflowY: 'auto',
-            }}
-            onClick={() => setSelected(null)}
-          >
-            <motion.div
-              initial={{ scale: 0.88, y: 30, opacity: 0 }}
-              animate={{ scale: 1, y: 0, opacity: 1 }}
-              exit={{ scale: 0.88, y: 20, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-              onClick={e => e.stopPropagation()}
-              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
-            >
-              <JokeMonCard card={selected} interactive />
-              {selected.tier !== 'starter' && (
-                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '-8px 0 0', letterSpacing: '0.08em' }}>
-                  ↕ Drag to rotate card
-                </p>
-              )}
-
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
-                <motion.button
-                  onClick={() => { setViewing3D(selected); setSelected(null) }}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
-                    border: `1px solid ${TIERS[selected.tier].color}55`,
-                    background: `${TIERS[selected.tier].color}18`,
-                    color: TIERS[selected.tier].color,
-                  }}
-                >
-                  🌀 View in 3D
-                </motion.button>
-
-                {[
-                  {
-                    label: selected.isFavorite ? '♥ Favorited' : '♡ Favorite',
-                    onClick: () => onToggleFav(selected.id),
-                    border: selected.isFavorite ? '#f43f5e' : 'rgba(255,255,255,0.2)',
-                    bg: selected.isFavorite ? 'rgba(244,63,94,0.2)' : 'transparent',
-                    color: selected.isFavorite ? '#f43f5e' : 'rgba(255,255,255,0.6)',
-                    as: 'button' as const,
-                  },
-                ].map(btn => (
-                  <motion.button key={btn.label}
-                    onClick={btn.onClick}
-                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                    style={{
-                      padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                      border: `1px solid ${btn.border}`, background: btn.bg, color: btn.color, cursor: 'pointer',
-                    }}
-                  >
-                    {btn.label}
-                  </motion.button>
-                ))}
-
-                <motion.a
-                  href={`/api/proxy-image?url=${encodeURIComponent(selected.joKemonImageUrl)}`}
-                  download="my-jokemon.jpg" target="_blank" rel="noopener noreferrer"
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    border: '1px solid rgba(255,255,255,0.2)', color: 'rgba(255,255,255,0.6)',
-                    textDecoration: 'none', display: 'inline-block',
-                  }}
-                >
-                  ⬇ Download
-                </motion.a>
-
-                <motion.button
-                  onClick={() => onRemove(selected.id)}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
-                    color: 'rgba(239,68,68,0.6)', cursor: 'pointer',
-                  }}
-                      >
-                  🗑 Remove
-                </motion.button>
-
-                <motion.button
-                  onClick={() => setSelected(null)}
-                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-                  style={{
-                    padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                    border: '1px solid rgba(255,255,255,0.1)', background: 'transparent',
-                    color: 'rgba(255,255,255,0.4)', cursor: 'pointer',
-                  }}
-                >
-                  ✕ Close
-                </motion.button>
-              </div>
-
-              <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', textAlign: 'center' }}>
-                Pulled {new Date(selected.timestamp).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                {' · '}{ELEMENTS[selected.element].label} · {TIERS[selected.tier].rarity}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* 3D Viewer */}
       {viewing3D && (

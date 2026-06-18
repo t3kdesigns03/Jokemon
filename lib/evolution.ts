@@ -296,10 +296,13 @@ export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petN
   const vibeDesc = analyzeNameVibe(safeName)
   const species = getSpeciesName(element, tier)
 
+  // "Transform this pet" anchors the model on the INPUT image so each pet
+  // produces a unique result. Without this, the model reads only the descriptive
+  // text and generates similar generic creatures regardless of the uploaded photo.
   return [
-    `A ${t.rarity.toLowerCase()} JokeMon creature called "${safeName}" (species: ${species}),`,
+    `Transform this pet into a ${t.rarity.toLowerCase()} JokeMon creature named "${safeName}" (species: ${species}),`,
+    `preserving the subject's face shape, body proportions, and distinctive markings,`,
     `with ${vibeDesc},`,
-    `evolved from a beloved pet,`,
     `${el.promptKeywords},`,
     `${t.strengthModifier},`,
     isHighRarity

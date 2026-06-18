@@ -1,10 +1,13 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ELEMENTS, TIERS, type Element, type EvolutionTier } from '@/lib/evolution'
 import { addCard, addXP, generateStats, type CollectionCard } from '@/lib/collection'
 import JokeMonCard from './JokeMonCard'
+
+const Card3DViewer = dynamic(() => import('./Card3DViewer'), { ssr: false })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -343,6 +346,7 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
   )
   const [revealingIdx, setRevealingIdx] = useState<number | null>(null)
   const [revealedCount, setRevealedCount] = useState(0)
+  const [viewing3D,    setViewing3D]    = useState<CollectionCard | null>(null)
 
   const confRef      = useRef<(() => void) | null>(null)
   const readyQueue   = useRef<number[]>([])
@@ -653,7 +657,8 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
                     <motion.div
                       whileHover={{ scale: 1.1, y: -4, zIndex: 10 }}
                       whileTap={{ scale: .95 }}
-                      style={{ position: 'relative' }}
+                      style={{ position: 'relative', cursor: 'pointer' }}
+                      onClick={() => pc.card && setViewing3D(pc.card)}
                     >
                       <JokeMonCard card={pc.card} compact />
                     </motion.div>
@@ -701,6 +706,9 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
           />
         )}
       </AnimatePresence>
+
+      {/* ── 3D Viewer ── */}
+      {viewing3D && <Card3DViewer card={viewing3D} onClose={() => setViewing3D(null)} />}
     </div>
   )
 }

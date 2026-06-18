@@ -23,10 +23,8 @@ export async function POST(req: NextRequest) {
     const tier = forceTier ?? rollEvolutionTier()
     const prompt = buildEvolutionPrompt(element, tier, petName)
 
-    // Use data URL directly — image is pre-compressed client-side to ~100KB
     const imageDataUrl = `data:image/jpeg;base64,${imageBase64}`
 
-    // Synchronous call — waits for result directly (55s timeout leaves buffer for response)
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), 55_000)
 
@@ -42,8 +40,8 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           image_url: imageDataUrl,
           prompt,
-          strength: 0.80,
-          num_inference_steps: 10,
+          strength: 0.60,
+          num_inference_steps: 20,
           num_images: 1,
           enable_safety_checker: true,
         }),
