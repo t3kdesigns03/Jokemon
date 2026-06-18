@@ -291,7 +291,7 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
         )}
         {cfg.isRainbow && (
           <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none',
-            background: 'radial-gradient(circle at 50% 80%, rgba(251,191,36,0.15) 0%, transparent 65%)' }} />
+                       background: 'radial-gradient(circle at 50% 80%, rgba(251,191,36,0.15) 0%, transparent 65%)' }} />
         )}
       </div>
 

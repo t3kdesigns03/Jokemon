@@ -4,7 +4,7 @@ export type EvolutionTier = 'starter' | 'evolved' | 'champion' | 'legendary'
 export interface TierConfig {
   name: string
   label: string
-  chance: number // cumulative probability (0-1)
+  chance: number
   rarity: string
   color: string
   glowColor: string
@@ -207,7 +207,7 @@ const VIBE_PATTERNS: Array<{ pattern: RegExp; vibe: NameVibe }> = [
     pattern: /\b(tiny|mini|small|little|baby|smol|itty|bitty|wee|micro|nano|petit)\b/i,
     vibe: {
       descriptor: 'tiny but insanely fierce',
-      traits: 'extremely tiny but puffed up trying to look big, disproportionately large determined eyes, tiny fists raised in defiance, giant elemental power emanating from tiny body, "don\'t underestimate me" energy',
+      traits: "extremely tiny but puffed up trying to look big, disproportionately large determined eyes, tiny fists raised in defiance, giant elemental power emanating from tiny body, don't underestimate me energy",
     },
   },
   {
@@ -232,7 +232,7 @@ const VIBE_PATTERNS: Array<{ pattern: RegExp; vibe: NameVibe }> = [
     },
   },
   {
-    pattern: /\b(genius|professor|doctor|dr|scientist|einstein|professor|brainiac|intellectual|scholar)\b/i,
+    pattern: /\b(genius|professor|doctor|dr|scientist|einstein|brainiac|intellectual|scholar)\b/i,
     vibe: {
       descriptor: 'intensely intellectual and scheming',
       traits: 'wearing tiny spectacles, surrounded by floating equations and blueprints, scheming expression of a creature that is three steps ahead of you, dramatically large brain, multiple inventions floating nearby',
@@ -242,7 +242,7 @@ const VIBE_PATTERNS: Array<{ pattern: RegExp; vibe: NameVibe }> = [
     pattern: /\b(yolo|swag|drip|vibe|vibes|dank|poggers|goat|based|slay|slaying|rizz|sigma)\b/i,
     vibe: {
       descriptor: 'maximum swagger and drip',
-      traits: 'wearing sunglasses and chains, extremely relaxed confident pose, elemental energy styled like designer brands, aura that says "too cool for this trading card", inexplicable sunglasses even indoors',
+      traits: 'wearing sunglasses and chains, extremely relaxed confident pose, elemental energy styled like designer brands, aura that says too cool for this trading card, inexplicable sunglasses even indoors',
     },
   },
   {
@@ -267,18 +267,14 @@ function analyzeNameVibe(name: string): string {
     return `${found.vibe.descriptor} personality, ${found.vibe.traits}`
   }
 
-  // Fallback heuristics based on name structure
   const words = name.trim().split(/\s+/)
   if (words.length >= 3) {
-    // Long multi-word names get an elaborate, grand treatment
     return `an epic personality befitting the grand name "${name}", elaborate appearance with multiple distinguishing features, dramatic pose that fills the frame`
   }
   if (name.length <= 3) {
-    // Very short names are mysterious
     return `mysterious and deceptively simple, cryptic ancient power hidden within an unassuming exterior, subtle but intense gaze`
   }
 
-  // Generic but strong — uses the actual name for personality
   return `a distinct personality that perfectly embodies the spirit of "${name}", memorable expressive features, unique striking pose that feels true to its name`
 }
 

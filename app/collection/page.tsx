@@ -341,7 +341,7 @@ export default function CollectionPage() {
                     border: '1px solid rgba(239,68,68,0.3)', background: 'transparent',
                     color: 'rgba(239,68,68,0.6)', cursor: 'pointer',
                   }}
-                >
+                      >
                   🗑 Remove
                 </motion.button>
 

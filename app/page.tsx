@@ -8,22 +8,15 @@ import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'sonner'
 import { ELEMENTS, TIERS, type Element, type EvolutionTier } from '@/lib/evolution'
-import { addCard, addXP, generateStats, getCollection, type CollectionCard } from '@/lib/collection'
+import { getCollection, type CollectionCard } from '@/lib/collection'
 import JokeMonCard from '@/components/JokeMonCard'
 import ShareButton from '@/components/ShareButton'
 
 // Dynamic imports — keeps heavy modules out of the main bundle
-const Card3DViewer = dynamic(() => import('@/components/Card3DViewer'), { ssr: false })
-const PackOpening  = dynamic(() => import('@/components/PackOpening'),  { ssr: false })
+const Card3DViewer    = dynamic(() => import('@/components/Card3DViewer'),    { ssr: false })
+const PackOpeningFull = dynamic(() => import('@/components/PackOpeningFull'), { ssr: false })
 
 type Phase = 'upload' | 'element' | 'pack' | 'reveal'
-
-const PHASE_TOASTS: Record<EvolutionTier, { icon: string; message: string }> = {
-  starter:   { icon: '🥚', message: 'A Starter JokeMon has hatched!' },
-  evolved:   { icon: '✨', message: 'An Evolved JokeMon emerged!' },
-  champion:  { icon: '💜', message: 'EPIC! An Champion-class JokeMon appeared!' },
-  legendary: { icon: '🌟', message: 'LEGENDARY! An ancient JokeMon has awakened!' },
-}
 
 // ─── Element Orb ─────────────────────────────────────────────────────────────
 
@@ -222,10 +215,6 @@ export default function Home() {
   const [collectionCount, setCollectionCount] = useState(0)
   const [show3D, setShow3D] = useState(false)
   const confettiRef = useRef<(() => void) | null>(null)
-  // Card generation promise — starts immediately when Evolve is clicked
-  const cardPromiseRef = useRef<Promise<CollectionCard> | null>(null)
-  // Level-up data stored for the onComplete toast
-  const levelUpRef = useRef<{ leveledUp: boolean; newLevel: number } | null>(null)
 
   useEffect(() => { setCollectionCount(getCollection().length) }, [])
 
@@ -264,60 +253,38 @@ export default function Home() {
   const handleEvolve = () => {
     if (!petFile || !element) return
     setError(null)
-
-    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
-
-    // Start generation immediately as a background promise — pack opening
-    // plays while this resolves (avg 15-30s, pack animation fills the wait).
-    const promise: Promise<CollectionCard> = (async () => {
-      const base64 = await compressImage(petFile, mobile ? 640 : 1024, mobile ? 0.7 : 0.82)
-      const res = await fetch('/api/evolve', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, element, petName: petName.trim() || 'Fluffy' }),
-      })
-      const data = await res.json()
-      if (!res.ok || data.error) throw new Error(data.error || 'Evolution failed')
-
-      const stats = generateStats(data.tier)
-      const card  = addCard({ tier: data.tier, element, petName: petName.trim() || 'Fluffy', joKemonImageUrl: data.joKemonImageUrl, ...stats })
-
-      const { leveledUp, newLevel } = addXP(data.tier as EvolutionTier)
-      window.dispatchEvent(new Event('pokepet-xp'))
-      setCollectionCount(c => c + 1)
-      levelUpRef.current = { leveledUp, newLevel }
-
-      return card
-    })()
-
-    cardPromiseRef.current = promise
     setPhase('pack')
   }
 
-  // Called by PackOpening once the reveal animation completes
-  const handlePackComplete = (card: CollectionCard) => {
-    setResult(card)
-    setPhase('reveal')
+  // Called by PackOpeningFull once all 10 cards are added and user taps "View Collection"
+  const handleAllComplete = (cards: CollectionCard[]) => {
+    const legendary = cards.filter(c => c.tier === 'legendary').length
+    const champion  = cards.filter(c => c.tier === 'champion').length
+    setCollectionCount(getCollection().length)
 
-    const t = PHASE_TOASTS[card.tier]
-    toast(t.message, {
-      icon: t.icon,
-      duration: card.tier === 'legendary' || card.tier === 'champion' ? 5000 : 3000,
-      style: card.tier === 'legendary'
-        ? { border: '1px solid rgba(251,191,36,0.5)', background: '#1a0a00', color: '#fbbf24' }
-        : card.tier === 'champion'
-        ? { border: '1px solid rgba(168,85,247,0.5)', background: '#0d0618', color: '#c084fc' }
-        : undefined,
-    })
-
-    const lu = levelUpRef.current
-    levelUpRef.current = null
-    if (lu?.leveledUp) {
-      setTimeout(() => toast(`⬆ Level Up! You're now Lab Level ${lu.newLevel}!`, {
-        icon: '🏆', duration: 4000,
-        style: { border: '1px solid rgba(251,191,36,0.4)', color: '#fbbf24' },
-      }), 800)
+    if (legendary > 0) {
+      confettiRef.current?.()
+      toast(`🏆 ${legendary}× LEGENDARY in your pack!`, {
+        icon: '👑', duration: 6000,
+        style: { border: '1px solid rgba(251,191,36,0.5)', background: '#1a0a00', color: '#fbbf24' },
+      })
+    } else if (champion > 0) {
+      toast(`⚡ ${champion}× Epic in your pack!`, {
+        icon: '💜', duration: 4000,
+        style: { border: '1px solid rgba(168,85,247,0.5)', background: '#0d0618', color: '#c084fc' },
+      })
+    } else {
+      toast('Pack added to your collection!', { icon: '🎴', duration: 3000 })
     }
+
+    // Show the last (best) card in the single-reveal phase, then back to upload
+    const sorted = [...cards].sort((a, b) => {
+      const order = { legendary: 0, champion: 1, evolved: 2, starter: 3 }
+      return order[a.tier] - order[b.tier]
+    })
+    const best = sorted[0]
+    if (best) { setResult(best); setPhase('reveal') }
+    else handleReset()
   }
 
   const handlePackError = (msg: string) => {
@@ -518,18 +485,17 @@ export default function Home() {
             </motion.div>
           )}
 
-          {/* ── Pack Opening ── */}
-          {phase === 'pack' && element && cardPromiseRef.current && (
+          {/* ── Pack Opening (10-card) ── */}
+          {phase === 'pack' && element && petFile && (
             <motion.div key="pack"
               initial={{ opacity: 0 }} animate={{ opacity: 1 }}
               exit={{ opacity: 0 }} transition={{ duration: 0.3 }}
             >
-              <PackOpening
+              <PackOpeningFull
                 element={element}
                 petName={petName}
-                cardPromise={cardPromiseRef.current}
-                onComplete={handlePackComplete}
-                onError={handlePackError}
+                petFile={petFile}
+                onAllComplete={handleAllComplete}
               />
             </motion.div>
           )}
@@ -610,7 +576,7 @@ export default function Home() {
                   border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(255,255,255,0.4)',
                   background: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 14,
                 }}>
-                  🔄 Evolve Another Pet
+                            🔄 Evolve Another Pet
                 </button>
               </motion.div>
             </motion.div>
