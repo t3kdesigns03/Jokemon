@@ -168,10 +168,11 @@ function JokeMonCard({ imageUrl, tier, element }: { imageUrl: string; tier: Evol
             border: `1px solid ${tierCfg.color}44`,
             boxShadow: `inset 0 0 30px ${elementCfg.color}22`,
           }}>
-            <Image src={imageUrl} alt="Your JokeMon" fill className="object-cover" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={imageUrl} alt="Your JokeMon" className="w-full h-full object-cover" />
             {/* Holographic sheen for legendary */}
             {isLegendary && (
-              <div className="absolute inset-0 shimmer-overlay" style={{
+              <div className="absolute inset-0" style={{
                 background: 'linear-gradient(135deg, transparent 30%, rgba(255,215,0,0.15) 50%, transparent 70%)',
                 animation: 'shimmer-move 3s ease-in-out infinite',
               }} />
