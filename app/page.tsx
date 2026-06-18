@@ -169,7 +169,11 @@ function JokeMonCard({ imageUrl, tier, element }: { imageUrl: string; tier: Evol
             boxShadow: `inset 0 0 30px ${elementCfg.color}22`,
           }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl} alt="Your JokeMon" className="w-full h-full object-cover" />
+            <img
+              src={`/api/proxy-image?url=${encodeURIComponent(imageUrl)}`}
+              alt="Your JokeMon"
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            />
             {/* Holographic sheen for legendary */}
             {isLegendary && (
               <div className="absolute inset-0" style={{

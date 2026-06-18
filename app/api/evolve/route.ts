@@ -55,14 +55,7 @@ export async function POST(req: NextRequest) {
       throw new Error('No image in fal.ai response')
     }
 
-    // Proxy image through server → avoids CORS when browser renders it
-    const imgRes = await fetch(joKemonImageUrl)
-    const imgBuffer = await imgRes.arrayBuffer()
-    const imgBase64 = Buffer.from(imgBuffer).toString('base64')
-    const mimeType = imgRes.headers.get('content-type') || 'image/jpeg'
-    const joKemonDataUrl = `data:${mimeType};base64,${imgBase64}`
-
-    return NextResponse.json({ success: true, tier, joKemonImageUrl: joKemonDataUrl })
+    return NextResponse.json({ success: true, tier, joKemonImageUrl })
   } catch (err) {
     console.error('Evolution error:', err)
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Evolution failed' }, { status: 500 })
