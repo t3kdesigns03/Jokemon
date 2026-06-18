@@ -490,6 +490,17 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
   const genCount    = packCards.filter(c => c.status !== 'generating').length
   const allRevealed = packCards.filter(c => c.status === 'revealed')
 
+  // Responsive: detect narrow viewport for layout adjustments
+  const [vw, setVw] = useState(() => typeof window !== 'undefined' ? window.innerWidth : 420)
+  useEffect(() => {
+    const onResize = () => setVw(window.innerWidth)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
+  const isMobile = vw < 480
+  const packSize = isMobile ? Math.min(vw - 48, 240) : 280
+  const gridCols = isMobile ? 'repeat(2, 1fr)' : 'repeat(5, 1fr)'
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center',
       gap: 24, padding: '16px 0', position: 'relative' }}>
@@ -509,7 +520,7 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
             </p>
 
             {/* Pack art — two halves split on rip */}
-            <div style={{ position: 'relative', width: 280, height: 392 }}>
+            <div style={{ position: 'relative', width: packSize, height: Math.round(packSize * 1.4) }}>
               {phase === 'pack' && (
                 <>
                   <motion.div
@@ -579,9 +590,10 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
                   transition={{ duration: 1.7, repeat: Infinity }}
                   whileHover={{ scale: 1.08 }} whileTap={{ scale: .92 }}
                   style={{
-                    padding: '18px 52px', borderRadius: 14, border: 'none', cursor: 'pointer',
+                    padding: isMobile ? '16px 28px' : '18px 52px', borderRadius: 14, border: 'none', cursor: 'pointer',
                     background: `linear-gradient(135deg, ${theme.border}, ${theme.accent})`,
-                    color: '#000', fontWeight: 900, fontSize: 18, letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: '#000', fontWeight: 900, fontSize: isMobile ? 15 : 18,
+                    letterSpacing: '0.08em', textTransform: 'uppercase',
                   }}
                 >
                   🎴 OPEN 10-CARD PACK
@@ -643,9 +655,9 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
               </motion.div>
             )}
 
-            {/* 5×2 card grid */}
+            {/* Card grid — 5 cols desktop, 2 cols mobile */}
             <div style={{
-              display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6,
+              display: 'grid', gridTemplateColumns: gridCols, gap: isMobile ? 10 : 6,
             }}>
               {packCards.map((pc, i) => (
                 <motion.div key={i}
