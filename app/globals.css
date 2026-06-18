@@ -190,3 +190,130 @@ body::before {
   pointer-events: none;
   animation: sparkle-drift var(--dur, 2.2s) ease-out var(--delay, 0s) infinite;
 }
+
+/* ────────────────────────────────────────────────────────────────────────────── */
+/*  ILLUSTRATION HOLO OVERLAYS  (IllustrationOverlay component)                   */
+/*                                                                                 */
+/*  Three grid classes + two sweep animations + one flicker.                       */
+/*  All use mix-blend-mode so they react to the artwork color underneath.          */
+/*  Tuning: adjust background-size to change dot density, opacity in JSX layer.   */
+/* ────────────────────────────────────────────────────────────────────────────── */
+
+/* ── Evolved (Rare): subtle silver dot grid ─────────────────────────────────── */
+/* Barely-there at rest, more visible when tilted via JS opacity ramp in JSX.     */
+.holo-grid-evolved {
+  background-image: radial-gradient(circle, rgba(180,210,255,0.45) 1px, transparent 1px);
+  background-size: 10px 10px;  /* Increase px to spread dots further apart */
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+
+/* ── Champion (Epic): purple dot grid + diagonal lines, animated drift ────────── */
+/* The drift animation moves the grid diagonally, simulating the foil catching light */
+.holo-grid-epic {
+  background-image:
+    radial-gradient(circle, rgba(168,85,247,0.5) 1px, transparent 1px),
+    repeating-linear-gradient(
+      60deg,
+      transparent, transparent 5px,
+      rgba(168,85,247,0.07) 5px, rgba(168,85,247,0.07) 6px
+    );
+  background-size: 8px 8px, 100% 100%;
+  mix-blend-mode: screen;
+  animation: holo-grid-shift-epic 4.5s linear infinite;
+  pointer-events: none;
+}
+
+/* ── Legendary: dense gold dot grid + diagonal, faster drift ─────────────────── */
+/* Smaller dot spacing + faster animation = richer holographic texture.            */
+.holo-grid-legendary {
+  background-image:
+    radial-gradient(circle, rgba(251,191,36,0.55) 1px, transparent 1px),
+    repeating-linear-gradient(
+      45deg,
+      transparent, transparent 3px,
+      rgba(251,191,36,0.10) 3px, rgba(251,191,36,0.10) 4px
+    );
+  background-size: 6px 6px, 100% 100%;  /* Smaller = denser grid */
+  mix-blend-mode: color-dodge;
+  animation: holo-grid-shift-legend 3s linear infinite;
+  pointer-events: none;
+}
+
+/* Grid drift: dots scroll diagonally to simulate shifting foil angle */
+@keyframes holo-grid-shift-epic {
+  0%   { background-position: 0px 0px, 0 0; }
+  100% { background-position: 8px 8px, 0 0; }
+}
+@keyframes holo-grid-shift-legend {
+  0%   { background-position: 0px 0px, 0 0; }
+  100% { background-position: 6px 6px, 0 0; }
+}
+
+/* ── Epic light sweep ─────────────────────────────────────────────────────────── */
+/* A diagonal beam that continuously crosses the illustration (purple-tinted).     */
+/* Adjust animation-duration in the rule to change sweep speed.                    */
+@keyframes epic-sweep {
+  0%   { background-position: 250% center; }
+  100% { background-position: -250% center; }
+}
+.epic-light-sweep {
+  background: linear-gradient(
+    108deg,
+    transparent 22%,
+    rgba(168,85,247,0.09) 38%,
+    rgba(255,255,255,0.30) 50%,
+    rgba(59,130,246,0.09) 62%,
+    transparent 78%
+  );
+  background-size: 200% 100%;
+  animation: epic-sweep 3.5s ease-in-out infinite;  /* Increase duration to slow the sweep */
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* ── Legendary light sweep ────────────────────────────────────────────────────── */
+/* Same concept but gold-tinted, brighter, and faster — premium feel.              */
+@keyframes legendary-sweep {
+  0%   { background-position: 250% center; }
+  100% { background-position: -250% center; }
+}
+.legendary-light-sweep {
+  background: linear-gradient(
+    108deg,
+    transparent 18%,
+    rgba(251,191,36,0.13) 32%,
+    rgba(255,255,255,0.52) 50%,   /* Center brightness — increase for a more dramatic flash */
+    rgba(249,115,22,0.13) 68%,
+    transparent 82%
+  );
+  background-size: 200% 100%;
+  animation: legendary-sweep 2.2s ease-in-out infinite;  /* Faster than epic */
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+
+/* ── Legendary flicker ────────────────────────────────────────────────────────── */
+/* Sporadic radial glow bursts — gives legendary cards an "alive" energy feel.    */
+/* Keyframe is sparse: long quiet gaps with quick double-flash bursts.             */
+/* Adjust opacity values (0.15, 0.20) to control flash intensity.                 */
+@keyframes legendary-flicker {
+  0%,  100% { opacity: 0.00; }
+  3%         { opacity: 0.16; }
+  6%         { opacity: 0.04; }
+  9%         { opacity: 0.22; }
+  12%        { opacity: 0.00; }
+  /* Long dark pause ... */
+  68%        { opacity: 0.00; }
+  71%        { opacity: 0.20; }
+  74%        { opacity: 0.05; }
+  77%        { opacity: 0.26; }
+  80%        { opacity: 0.00; }
+}
+.legendary-flicker {
+  /* Radial burst centered slightly above the middle of the illustration */
+  background: radial-gradient(ellipse 80% 60% at 50% 35%, rgba(251,191,36,0.7) 0%, transparent 70%);
+  animation: legendary-flicker 7s ease-in-out infinite;
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}

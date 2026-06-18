@@ -133,7 +133,65 @@ async function buildCardTexture(card: CollectionCard): Promise<THREE.CanvasTextu
     const img = await loadImg(proxyUrl)
     ctx.save()
     rRect(ctx, imgX, imgY, imgW, imgH, 13); ctx.clip()
+
+    // Boost artwork contrast/saturation for Rare+ — baked into the texture
+    // so the Three.js card looks premium even without real-time CSS filters
+    if (tier === 'legendary') ctx.filter = 'contrast(1.18) saturate(1.7) brightness(1.07)'
+    else if (tier === 'champion') ctx.filter = 'contrast(1.13) saturate(1.5) brightness(1.04)'
+    else if (tier === 'evolved') ctx.filter = 'contrast(1.08) saturate(1.25)'
+
     ctx.drawImage(img, imgX, imgY, imgW, imgH)
+    ctx.filter = 'none'
+
+    // ── Holo dot-grid overlay (Rare+) ─────────────────────────────────────
+    // Classic TCG reverse-holo: fine dot grid baked onto the illustration.
+    // The Three.js iridescence material animates on top, so this texture is
+    // the "substrate" that makes the holo feel physically embedded in the art.
+    if (tier !== 'starter') {
+      const dotSpacing = tier === 'legendary' ? 7 : tier === 'champion' ? 8 : 10
+      const dotAlpha   = tier === 'legendary' ? 0.22 : tier === 'champion' ? 0.18 : 0.12
+      const dotColor   = tier === 'legendary' ? `rgba(251,191,36,${dotAlpha})`
+                       : tier === 'champion'  ? `rgba(168,85,247,${dotAlpha})`
+                       :                        `rgba(180,210,255,${dotAlpha})`
+
+      for (let dx = imgX + dotSpacing / 2; dx < imgX + imgW; dx += dotSpacing) {
+        for (let dy = imgY + dotSpacing / 2; dy < imgY + imgH; dy += dotSpacing) {
+          ctx.beginPath()
+          ctx.arc(dx, dy, 0.9, 0, Math.PI * 2)
+          ctx.fillStyle = dotColor
+          ctx.fill()
+        }
+      }
+
+      // Rainbow shimmer gradient baked at a static 135° angle.
+      // The Three.js Fresnel iridescence material makes it shift dynamically.
+      const shimmerOp = tier === 'legendary' ? 0.28 : tier === 'champion' ? 0.20 : 0.10
+      const shimGrad = ctx.createLinearGradient(imgX, imgY, imgX + imgW, imgY + imgH)
+      shimGrad.addColorStop(0,    `rgba(255,0,128,${shimmerOp})`)
+      shimGrad.addColorStop(0.18, `rgba(255,165,0,${shimmerOp})`)
+      shimGrad.addColorStop(0.36, `rgba(255,255,0,${shimmerOp})`)
+      shimGrad.addColorStop(0.54, `rgba(0,255,128,${shimmerOp})`)
+      shimGrad.addColorStop(0.72, `rgba(0,128,255,${shimmerOp})`)
+      shimGrad.addColorStop(0.90, `rgba(128,0,255,${shimmerOp})`)
+      shimGrad.addColorStop(1,    `rgba(255,0,128,${shimmerOp})`)
+      ctx.globalCompositeOperation = 'color-dodge'
+      ctx.fillStyle = shimGrad
+      ctx.fillRect(imgX, imgY, imgW, imgH)
+      ctx.globalCompositeOperation = 'source-over'
+
+      // Legendary: extra gold inner glow along illustration edges
+      if (tier === 'legendary') {
+        const edgeGlow = ctx.createRadialGradient(
+          imgX + imgW / 2, imgY + imgH / 2, imgW * 0.3,
+          imgX + imgW / 2, imgY + imgH / 2, imgW * 0.62
+        )
+        edgeGlow.addColorStop(0, 'transparent')
+        edgeGlow.addColorStop(1, 'rgba(251,191,36,0.18)')
+        ctx.fillStyle = edgeGlow
+        ctx.fillRect(imgX, imgY, imgW, imgH)
+      }
+    }
+
     ctx.restore()
   } catch {
     ctx.font = '80px serif'; ctx.textAlign = 'center'
@@ -253,29 +311,40 @@ interface HoloProps {
 
 function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null)
-  const strength = { starter: 0, evolved: 0.35, champion: 0.75, legendary: 1.0 }[tier] ?? 0
+  // Holo strength per tier — increase these to make foil more dramatic
+  const strength = { starter: 0, evolved: 0.45, champion: 0.88, legendary: 1.0 }[tier] ?? 0
 
   useFrame(({ camera }) => {
     if (!matRef.current || !meshRef.current || strength === 0) return
-    const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRef.current.quaternion)
-    const toCam  = camera.position.clone().sub(meshRef.current.position).normalize()
-    const dot    = Math.abs(normal.dot(toCam)) // 1 = face-on, 0 = edge-on
-    const fresnel = Math.pow(1 - dot, 1.8)     // peaks at oblique angles, like real TCG foil
+    const normal  = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRef.current.quaternion)
+    const toCam   = camera.position.clone().sub(meshRef.current.position).normalize()
+    const dot     = Math.abs(normal.dot(toCam)) // 1 = face-on, 0 = edge-on
+    // Fresnel: peaks at oblique view angles (like real TCG foil)
+    // Exponent: higher = sharper falloff. 1.5 = wide holo zone, 2.5 = narrow peak
+    const fresnel = Math.pow(1 - dot, 1.5)
 
-    matRef.current.iridescence             = fresnel * strength
-    matRef.current.iridescenceIOR          = 1.2 + fresnel * 0.9
-    matRef.current.iridescenceThicknessRange = [80 + fresnel * 150, 350 + fresnel * 350]
-    if (tier === 'legendary') matRef.current.emissiveIntensity = 0.06 + fresnel * 0.08
+    matRef.current.iridescence               = fresnel * strength
+    // IOR range: 1.1 (subtle) → 2.2 (strong rainbow). Increase max for wilder color shifts
+    matRef.current.iridescenceIOR            = 1.15 + fresnel * 1.05
+    // Thickness range drives which colors show. Wider range = more color variety
+    matRef.current.iridescenceThicknessRange = [60 + fresnel * 180, 300 + fresnel * 450]
+
+    if (tier === 'legendary') {
+      // Gold emissive glows stronger when seen at an angle
+      matRef.current.emissiveIntensity = 0.08 + fresnel * 0.14
+    } else if (tier === 'champion') {
+      matRef.current.emissiveIntensity = 0.04 + fresnel * 0.08
+    }
   })
 
   return (
     <meshPhysicalMaterial
       ref={matRef}
       map={texture}
-      roughness={0.04}
+      roughness={0.03}      // Lower = more mirror-like surface
       metalness={0.0}
-      clearcoat={1.0}
-      clearcoatRoughness={0.04}
+      clearcoat={1.0}       // Full clearcoat = glass-like top coat (like real card laminate)
+      clearcoatRoughness={0.03}
       iridescence={0}
       iridescenceIOR={1.5}
       iridescenceThicknessRange={[100, 400]}
@@ -283,8 +352,9 @@ function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
         tier === 'legendary' ? '#fbbf24' :
         tier === 'champion'  ? '#a855f7' : '#000000'
       )}
-      emissiveIntensity={0.04}
-      envMapIntensity={tier === 'legendary' ? 2.0 : tier === 'champion' ? 1.2 : 0.6}
+      emissiveIntensity={0.06}
+      // Higher envMapIntensity = more reflective (environment map reflections)
+      envMapIntensity={tier === 'legendary' ? 2.4 : tier === 'champion' ? 1.5 : tier === 'evolved' ? 0.8 : 0.4}
     />
   )
 }
@@ -365,15 +435,24 @@ function Card3DMesh({ card }: { card: CollectionCard }) {
       </RoundedBox>
 
       {/* Rarity particle fx */}
-      {(card.tier === 'legendary' || card.tier === 'champion') && (
-        <Sparkles
-          count={card.tier === 'legendary' ? 70 : 35}
-          scale={[3.2, 4.2, 2]}
-          size={card.tier === 'legendary' ? 4.5 : 2.8}
-          speed={0.35}
-          color={card.tier === 'legendary' ? '#fbbf24' : '#a855f7'}
-          opacity={0.85}
-        />
+      {/* Evolved gets subtle silver sparkles; Epic/Legendary get heavier particles */}
+      {card.tier === 'evolved' && (
+        <Sparkles count={12} scale={[2.6, 3.6, 1.5]} size={1.4} speed={0.2}
+          color="#94a3b8" opacity={0.55} />
+      )}
+      {card.tier === 'champion' && (
+        <Sparkles count={45} scale={[3.4, 4.6, 2]} size={3.2} speed={0.4}
+          color="#a855f7" opacity={0.9} />
+      )}
+      {card.tier === 'legendary' && (
+        <>
+          {/* Primary gold particles */}
+          <Sparkles count={80} scale={[3.6, 5.0, 2.2]} size={5.0} speed={0.45}
+            color="#fbbf24" opacity={1.0} />
+          {/* Secondary orange/pink scatter for depth */}
+          <Sparkles count={30} scale={[4.0, 5.5, 2.5]} size={2.5} speed={0.25}
+            color="#f97316" opacity={0.7} />
+        </>
       )}
 
       {/* Lights */}
