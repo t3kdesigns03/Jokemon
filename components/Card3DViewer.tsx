@@ -165,7 +165,7 @@ async function buildCardTexture(card: CollectionCard): Promise<THREE.CanvasTextu
 
       // Rainbow shimmer gradient baked at a static 135° angle.
       // The Three.js Fresnel iridescence material makes it shift dynamically.
-      const shimmerOp = tier === 'legendary' ? 0.28 : tier === 'champion' ? 0.20 : 0.10
+      const shimmerOp = tier === 'legendary' ? 0.10 : tier === 'champion' ? 0.07 : 0.04
       const shimGrad = ctx.createLinearGradient(imgX, imgY, imgX + imgW, imgY + imgH)
       shimGrad.addColorStop(0,    `rgba(255,0,128,${shimmerOp})`)
       shimGrad.addColorStop(0.18, `rgba(255,165,0,${shimmerOp})`)
@@ -312,28 +312,23 @@ interface HoloProps {
 function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
   const matRef = useRef<THREE.MeshPhysicalMaterial>(null)
   // Holo strength per tier — increase these to make foil more dramatic
-  const strength = { starter: 0, evolved: 0.45, champion: 0.88, legendary: 1.0 }[tier] ?? 0
+  const strength = { starter: 0, evolved: 0.22, champion: 0.44, legendary: 0.62 }[tier] ?? 0
 
   useFrame(({ camera }) => {
     if (!matRef.current || !meshRef.current || strength === 0) return
     const normal  = new THREE.Vector3(0, 0, 1).applyQuaternion(meshRef.current.quaternion)
     const toCam   = camera.position.clone().sub(meshRef.current.position).normalize()
-    const dot     = Math.abs(normal.dot(toCam)) // 1 = face-on, 0 = edge-on
-    // Fresnel: peaks at oblique view angles (like real TCG foil)
-    // Exponent: higher = sharper falloff. 1.5 = wide holo zone, 2.5 = narrow peak
-    const fresnel = Math.pow(1 - dot, 1.5)
+    const dot     = Math.abs(normal.dot(toCam))
+    const fresnel = Math.pow(1 - dot, 2.2) // sharper falloff = iridescence only at steep angles
 
     matRef.current.iridescence               = fresnel * strength
-    // IOR range: 1.1 (subtle) → 2.2 (strong rainbow). Increase max for wilder color shifts
-    matRef.current.iridescenceIOR            = 1.15 + fresnel * 1.05
-    // Thickness range drives which colors show. Wider range = more color variety
-    matRef.current.iridescenceThicknessRange = [60 + fresnel * 180, 300 + fresnel * 450]
+    matRef.current.iridescenceIOR            = 1.2 + fresnel * 0.6   // narrower color range
+    matRef.current.iridescenceThicknessRange = [80 + fresnel * 100, 200 + fresnel * 200]
 
     if (tier === 'legendary') {
-      // Gold emissive glows stronger when seen at an angle
-      matRef.current.emissiveIntensity = 0.08 + fresnel * 0.14
-    } else if (tier === 'champion') {
       matRef.current.emissiveIntensity = 0.04 + fresnel * 0.08
+    } else if (tier === 'champion') {
+      matRef.current.emissiveIntensity = 0.02 + fresnel * 0.04
     }
   })
 
@@ -341,20 +336,19 @@ function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
     <meshPhysicalMaterial
       ref={matRef}
       map={texture}
-      roughness={0.03}      // Lower = more mirror-like surface
+      roughness={0.18}          // higher roughness = softer specular, no blinding orb
       metalness={0.0}
-      clearcoat={1.0}       // Full clearcoat = glass-like top coat (like real card laminate)
-      clearcoatRoughness={0.03}
+      clearcoat={0.6}           // reduced clearcoat = subtler glass sheen
+      clearcoatRoughness={0.15}
       iridescence={0}
-      iridescenceIOR={1.5}
-      iridescenceThicknessRange={[100, 400]}
+      iridescenceIOR={1.4}
+      iridescenceThicknessRange={[100, 300]}
       emissive={new THREE.Color(
         tier === 'legendary' ? '#fbbf24' :
         tier === 'champion'  ? '#a855f7' : '#000000'
       )}
-      emissiveIntensity={0.06}
-      // Higher envMapIntensity = more reflective (environment map reflections)
-      envMapIntensity={tier === 'legendary' ? 2.4 : tier === 'champion' ? 1.5 : tier === 'evolved' ? 0.8 : 0.4}
+      emissiveIntensity={0.04}
+      envMapIntensity={tier === 'legendary' ? 1.2 : tier === 'champion' ? 0.8 : tier === 'evolved' ? 0.5 : 0.3}
     />
   )
 }
@@ -364,17 +358,17 @@ function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
 function RarityLights({ tier, element }: { tier: string; element: string }) {
   const elColor = ELEMENTS[element as keyof typeof ELEMENTS].color
   const rarityColor = TIERS[tier as keyof typeof TIERS].color
-  const intensity = { starter: 0.5, evolved: 1.0, champion: 2.2, legendary: 3.5 }[tier] ?? 1
+  const intensity = { starter: 0.3, evolved: 0.5, champion: 0.9, legendary: 1.4 }[tier] ?? 0.5
 
   return (
     <>
-      <pointLight color={elColor}     intensity={intensity}       position={[0, 0, 2.5]}  distance={7} />
-      <pointLight color={rarityColor} intensity={intensity * 0.8} position={[2.5, -1, 1]} distance={6} />
-      <pointLight color={rarityColor} intensity={intensity * 0.5} position={[-2, 2, 1]}   distance={5} />
+      <pointLight color={elColor}     intensity={intensity}       position={[0, 0, 3]}    distance={8} />
+      <pointLight color={rarityColor} intensity={intensity * 0.5} position={[2.5, -1, 1]} distance={6} />
+      <pointLight color={rarityColor} intensity={intensity * 0.3} position={[-2, 2, 1]}   distance={5} />
       {tier === 'legendary' && (
         <>
-          <pointLight color="#fbbf24" intensity={2} position={[0, 3, 0]}    distance={6} />
-          <pointLight color="#f472b6" intensity={1} position={[-3, -2, 1]}  distance={5} />
+          <pointLight color="#fbbf24" intensity={0.8} position={[0, 3, 0]}   distance={6} />
+          <pointLight color="#f472b6" intensity={0.4} position={[-3, -2, 1]} distance={5} />
         </>
       )}
     </>
@@ -437,21 +431,19 @@ function Card3DMesh({ card }: { card: CollectionCard }) {
       {/* Rarity particle fx */}
       {/* Evolved gets subtle silver sparkles; Epic/Legendary get heavier particles */}
       {card.tier === 'evolved' && (
-        <Sparkles count={12} scale={[2.6, 3.6, 1.5]} size={1.4} speed={0.2}
-          color="#94a3b8" opacity={0.55} />
+        <Sparkles count={8} scale={[2.6, 3.6, 1.5]} size={1.0} speed={0.15}
+          color="#94a3b8" opacity={0.35} />
       )}
       {card.tier === 'champion' && (
-        <Sparkles count={45} scale={[3.4, 4.6, 2]} size={3.2} speed={0.4}
-          color="#a855f7" opacity={0.9} />
+        <Sparkles count={20} scale={[3.4, 4.6, 2]} size={2.0} speed={0.3}
+          color="#a855f7" opacity={0.55} />
       )}
       {card.tier === 'legendary' && (
         <>
-          {/* Primary gold particles */}
-          <Sparkles count={80} scale={[3.6, 5.0, 2.2]} size={5.0} speed={0.45}
-            color="#fbbf24" opacity={1.0} />
-          {/* Secondary orange/pink scatter for depth */}
-          <Sparkles count={30} scale={[4.0, 5.5, 2.5]} size={2.5} speed={0.25}
-            color="#f97316" opacity={0.7} />
+          <Sparkles count={35} scale={[3.6, 5.0, 2.2]} size={3.0} speed={0.35}
+            color="#fbbf24" opacity={0.65} />
+          <Sparkles count={15} scale={[4.0, 5.5, 2.5]} size={1.8} speed={0.2}
+            color="#f97316" opacity={0.45} />
         </>
       )}
 
