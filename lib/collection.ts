@@ -4,6 +4,7 @@ export interface CollectionCard {
   id: string
   tier: EvolutionTier
   element: Element
+  petName: string
   joKemonImageUrl: string
   timestamp: number
   isFavorite: boolean

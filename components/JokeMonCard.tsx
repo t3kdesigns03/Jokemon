@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { ELEMENTS, TIERS } from '@/lib/evolution'
 import type { CollectionCard } from '@/lib/collection'
 
@@ -9,6 +9,8 @@ interface JokeMonCardProps {
   card: CollectionCard
   compact?: boolean
   onClick?: () => void
+  /** If true, enables drag-to-rotate (Phase 2). Disabled in compact/collection grid. */
+  interactive?: boolean
 }
 
 const RARITY_CFG = {
@@ -17,14 +19,14 @@ const RARITY_CFG = {
     innerBg: 'linear-gradient(160deg, #111827 0%, #1f2937 100%)',
     headerBg: 'rgba(55,65,81,0.4)', imageBorder: '1px solid #374151',
     badgeBg: '#1f2937', badgeBorder: '#4b5563', badgeColor: '#9ca3af', statColor: '#6b7280',
-    isRainbow: false, isEpic: false, isRare: false, showSparkles: false,
+    isRainbow: false, isEpic: false, isRare: false, showSparkles: false, holoStrength: 0,
   },
   evolved: {
     outerBorder: '2px solid #94a3b8', outerGlow: '0 0 14px rgba(148,163,184,0.3)', outerRadius: '0.875rem',
     innerBg: 'linear-gradient(160deg, #0f172a 0%, #1e293b 60%, #0f1a2e 100%)',
     headerBg: 'rgba(148,163,184,0.08)', imageBorder: '1px solid rgba(148,163,184,0.5)',
     badgeBg: 'linear-gradient(135deg,#1e293b,#334155)', badgeBorder: '#94a3b8', badgeColor: '#e2e8f0',
-    statColor: '#94a3b8', isRainbow: false, isEpic: false, isRare: true, showSparkles: false,
+    statColor: '#94a3b8', isRainbow: false, isEpic: false, isRare: true, showSparkles: false, holoStrength: 0.3,
   },
   champion: {
     outerBorder: '3px solid #a855f7', outerGlow: '0 0 25px rgba(168,85,247,0.65), 0 0 60px rgba(168,85,247,0.25)',
@@ -32,14 +34,14 @@ const RARITY_CFG = {
     innerBg: 'linear-gradient(160deg, #0d0618 0%, #1a0533 50%, #0d0618 100%)',
     headerBg: 'rgba(168,85,247,0.18)', imageBorder: '2px solid rgba(168,85,247,0.6)',
     badgeBg: 'linear-gradient(135deg,#4c1d95,#7c3aed)', badgeBorder: '#c084fc', badgeColor: '#f3e8ff',
-    statColor: '#c084fc', isRainbow: false, isEpic: true, isRare: false, showSparkles: false,
+    statColor: '#c084fc', isRainbow: false, isEpic: true, isRare: false, showSparkles: false, holoStrength: 0.7,
   },
   legendary: {
     outerBorder: 'none', outerGlow: 'none', outerRadius: '1rem',
     innerBg: 'linear-gradient(160deg, #1a0a00 0%, #2d1400 40%, #1a0500 100%)',
     headerBg: 'rgba(251,191,36,0.18)', imageBorder: '2px solid rgba(251,191,36,0.7)',
     badgeBg: 'linear-gradient(135deg,#92400e,#d97706,#fbbf24)', badgeBorder: '#fbbf24', badgeColor: '#000',
-    statColor: '#fbbf24', isRainbow: true, isEpic: false, isRare: false, showSparkles: true,
+    statColor: '#fbbf24', isRainbow: true, isEpic: false, isRare: false, showSparkles: true, holoStrength: 1,
   },
 }
 
@@ -54,39 +56,129 @@ const SPARKLE_POS = [
   { x: 40, y: 95, dur: 1.7, delay: 0.3,  size: 10 },
 ]
 
-// ─── Tilt wrapper for full card ───────────────────────────────────────────────
+// ─── Phase 2: Drag-to-rotate 2.5D wrapper ─────────────────────────────────────
 
-function TiltCard({ children, disabled }: { children: React.ReactNode; disabled?: boolean }) {
+interface DragRotateProps {
+  children: React.ReactNode
+  holoStrength: number
+  isRainbow: boolean
+  isEpic: boolean
+}
+
+function DragRotateCard({ children, holoStrength, isRainbow, isEpic }: DragRotateProps) {
   const ref = useRef<HTMLDivElement>(null)
-  const rawX = useMotionValue(0)
-  const rawY = useMotionValue(0)
-  const rotateX = useSpring(useTransform(rawY, [-1, 1], [8, -8]), { stiffness: 300, damping: 30 })
-  const rotateY = useSpring(useTransform(rawX, [-1, 1], [-8, 8]),  { stiffness: 300, damping: 30 })
+  const [rot, setRot] = useState({ x: 0, y: 0 })
+  const [isDown, setIsDown] = useState(false)
+  const last = useRef({ x: 0, y: 0 })
+  const animFrame = useRef<number | null>(null)
+  const targetRot = useRef({ x: 0, y: 0 })
+  const currentRot = useRef({ x: 0, y: 0 })
 
-  if (disabled) return <>{children}</>
+  // Smooth lerp loop
+  useEffect(() => {
+    const loop = () => {
+      const lerp = isDown ? 0.25 : 0.08
+      currentRot.current.x += (targetRot.current.x - currentRot.current.x) * lerp
+      currentRot.current.y += (targetRot.current.y - currentRot.current.y) * lerp
+      setRot({ x: currentRot.current.x, y: currentRot.current.y })
+      animFrame.current = requestAnimationFrame(loop)
+    }
+    animFrame.current = requestAnimationFrame(loop)
+    return () => { if (animFrame.current) cancelAnimationFrame(animFrame.current) }
+  }, [isDown])
+
+  const getPos = (e: React.PointerEvent) => ({ x: e.clientX, y: e.clientY })
+
+  const onPointerDown = (e: React.PointerEvent) => {
+    setIsDown(true)
+    last.current = getPos(e)
+    ;(e.currentTarget as HTMLElement).setPointerCapture(e.pointerId)
+  }
+
+  const onPointerMove = (e: React.PointerEvent) => {
+    if (!isDown) return
+    const pos = getPos(e)
+    const dx = pos.x - last.current.x
+    const dy = pos.y - last.current.y
+    targetRot.current = {
+      x: Math.max(-35, Math.min(35, targetRot.current.x - dy * 0.6)),
+      y: Math.max(-45, Math.min(45, targetRot.current.y + dx * 0.6)),
+    }
+    last.current = pos
+  }
+
+  const onPointerUp = () => {
+    setIsDown(false)
+    targetRot.current = { x: 0, y: 0 }
+  }
+
+  // Holo rainbow overlay — shifts based on rotation angle
+  const holoAngle = 135 + rot.y * 1.5 + rot.x * 0.5
+  const holoOpacity = holoStrength * (0.15 + Math.abs(rot.y) / 45 * 0.25 + Math.abs(rot.x) / 35 * 0.15)
+  const shineX = 50 + rot.y * 0.8
+  const shineY = 50 - rot.x * 0.8
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      style={{ rotateX, rotateY, transformStyle: 'preserve-3d', display: 'inline-block' }}
-      onMouseMove={e => {
-        const rect = ref.current!.getBoundingClientRect()
-        rawX.set(((e.clientX - rect.left) / rect.width  - 0.5) * 2)
-        rawY.set(((e.clientY - rect.top)  / rect.height - 0.5) * 2)
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerLeave={onPointerUp}
+      style={{
+        display: 'inline-block',
+        cursor: isDown ? 'grabbing' : 'grab',
+        transformStyle: 'preserve-3d',
+        transform: `perspective(900px) rotateX(${rot.x}deg) rotateY(${rot.y}deg)`,
+        transition: isDown ? 'none' : 'transform 0.1s ease-out',
+        userSelect: 'none',
+        WebkitUserSelect: 'none',
+        touchAction: 'none',
+        position: 'relative',
       }}
-      onMouseLeave={() => { rawX.set(0); rawY.set(0) }}
-      whileHover={{ scale: 1.02 }}
-      transition={{ scale: { type: 'spring', stiffness: 400, damping: 25 } }}
     >
       {children}
-    </motion.div>
+
+      {/* Holo foil overlay — visible on Rare+ when rotated */}
+      {holoStrength > 0 && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '0.875rem',
+          pointerEvents: 'none', zIndex: 10,
+          opacity: holoOpacity,
+          background: `
+            radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.35) 0%, transparent 50%),
+            linear-gradient(${holoAngle}deg,
+              rgba(255,0,128,0.6) 0%,
+              rgba(255,165,0,0.6) 16%,
+              rgba(255,255,0,0.6) 33%,
+              rgba(0,255,128,0.6) 50%,
+              rgba(0,128,255,0.6) 66%,
+              rgba(128,0,255,0.6) 83%,
+              rgba(255,0,128,0.6) 100%
+            )
+          `,
+          mixBlendMode: 'color-dodge',
+        }} />
+      )}
+
+      {/* Specular shine spot */}
+      {holoStrength > 0.5 && (
+        <div style={{
+          position: 'absolute', inset: 0, borderRadius: '0.875rem',
+          pointerEvents: 'none', zIndex: 11,
+          opacity: Math.max(0, holoStrength * 0.4 * (Math.abs(rot.y) / 45 + Math.abs(rot.x) / 35)),
+          background: `radial-gradient(circle at ${shineX}% ${shineY}%, rgba(255,255,255,0.9) 0%, transparent 30%)`,
+          mixBlendMode: 'screen',
+        }} />
+      )}
+    </div>
   )
 }
 
-// ─── Main Card ────────────────────────────────────────────────────────────────
+// ─── Card inner content ───────────────────────────────────────────────────────
 
-export default function JokeMonCard({ card, compact = false, onClick }: JokeMonCardProps) {
-  const { tier, element, joKemonImageUrl, hp, atk, def, spd, cardNumber } = card
+export default function JokeMonCard({ card, compact = false, onClick, interactive = false }: JokeMonCardProps) {
+  const { tier, element, petName, joKemonImageUrl, hp, atk, def, spd, cardNumber } = card
   const cfg = RARITY_CFG[tier]
   const tierCfg = TIERS[tier]
   const elementCfg = ELEMENTS[element]
@@ -95,6 +187,7 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
   const proxyUrl = `/api/proxy-image?url=${encodeURIComponent(joKemonImageUrl)}`
   const cardWidth = compact ? 160 : 'min(320px, calc(100vw - 40px))'
   const maxStat = tier === 'legendary' ? 200 : tier === 'champion' ? 130 : tier === 'evolved' ? 90 : 60
+  const displayName = (petName || 'Fluffy').toUpperCase()
 
   useEffect(() => { if (cfg.showSparkles) setShowSparkles(true) }, [cfg.showSparkles])
 
@@ -103,7 +196,8 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
       style={{
         borderRadius: cfg.outerRadius, overflow: 'hidden',
         background: cfg.innerBg, width: cardWidth,
-        cursor: onClick ? 'pointer' : 'default', userSelect: 'none',
+        cursor: onClick ? 'pointer' : interactive ? 'grab' : 'default',
+        userSelect: 'none',
         ...(cfg.isRainbow ? {} : { border: cfg.outerBorder, boxShadow: cfg.outerGlow }),
       }}
       onClick={onClick}
@@ -127,11 +221,27 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
         </div>
       </div>
 
+      {/* Pet Name */}
+      {!compact && (
+        <div style={{
+          textAlign: 'center', padding: '6px 14px 2px',
+          fontSize: '1.1em', fontWeight: 900,
+          letterSpacing: '0.08em',
+          color: cfg.isRainbow ? '#fbbf24' : cfg.isEpic ? '#c084fc' : 'rgba(255,255,255,0.85)',
+          textShadow: cfg.isRainbow
+            ? '0 0 12px rgba(251,191,36,0.8)'
+            : cfg.isEpic ? '0 0 10px rgba(168,85,247,0.6)' : 'none',
+        }}>
+          {displayName}
+        </div>
+      )}
+
       {/* Image */}
       <div
         className={cfg.isRare ? 'rare-shimmer' : ''}
         style={{
-          margin: compact ? '4px' : '8px', borderRadius: compact ? 6 : 10,
+          margin: compact ? '4px' : '6px 8px 8px',
+          borderRadius: compact ? 6 : 10,
           overflow: 'hidden', aspectRatio: '1', border: cfg.imageBorder, background: '#000',
           boxShadow: cfg.isEpic ? 'inset 0 0 20px rgba(168,85,247,0.3)'
                    : cfg.isRainbow ? 'inset 0 0 30px rgba(251,191,36,0.2)' : 'none',
@@ -151,7 +261,7 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
           </div>
         )}
         <img
-          src={proxyUrl} alt="JokeMon" onLoad={() => setImgLoaded(true)}
+          src={proxyUrl} alt={displayName} onLoad={() => setImgLoaded(true)}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block',
             opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.4s ease' }}
         />
@@ -228,6 +338,7 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
     </div>
   )
 
+  // ── Compact: spring lift on hover ─────────────────────────────────────────
   if (compact) {
     return (
       <motion.div
@@ -241,8 +352,8 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
     )
   }
 
-  // Full card gets tilt effect
-  const fullCard = (
+  // ── Full card: sparkle wrapper + drag rotate ──────────────────────────────
+  const cardWithSparkles = (
     <div style={{ position: 'relative', display: 'inline-block', borderRadius: cfg.outerRadius }}>
       {showSparkles && SPARKLE_POS.map((s, i) => (
         <span key={i} className="sparkle"
@@ -252,10 +363,8 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
         </span>
       ))}
       {cfg.isRainbow ? (
-        <motion.div
-          className="legendary-glow-pulse"
-          style={{ position: 'relative', display: 'inline-block', borderRadius: cfg.outerRadius }}
-        >
+        <motion.div className="legendary-glow-pulse"
+          style={{ position: 'relative', display: 'inline-block', borderRadius: cfg.outerRadius }}>
           <div className="legendary-rainbow-border"
             style={{ padding: 3, borderRadius: cfg.outerRadius, display: 'inline-block' }}>
             {inner}
@@ -269,5 +378,18 @@ export default function JokeMonCard({ card, compact = false, onClick }: JokeMonC
     </div>
   )
 
-  return <TiltCard>{fullCard}</TiltCard>
+  if (interactive) {
+    return (
+      <DragRotateCard
+        holoStrength={cfg.holoStrength}
+        isRainbow={cfg.isRainbow}
+        isEpic={cfg.isEpic}
+      >
+        {cardWithSparkles}
+      </DragRotateCard>
+    )
+  }
+
+  // Static full card (used in collection modal without drag)
+  return cardWithSparkles
 }

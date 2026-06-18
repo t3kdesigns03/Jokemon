@@ -127,13 +127,15 @@ export function rollEvolutionTier(): EvolutionTier {
   return 'legendary'
 }
 
-export function buildEvolutionPrompt(element: Element, tier: EvolutionTier): string {
+export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petName = 'Fluffy'): string {
   const el = ELEMENTS[element]
   const t = TIERS[tier]
   const isHighRarity = tier === 'champion' || tier === 'legendary'
+  const safeName = petName.trim() || 'Fluffy'
 
   return [
-    `A ${t.rarity.toLowerCase()} JokeMon creature evolved from a pet,`,
+    `A ${t.rarity.toLowerCase()} JokeMon creature named ${safeName} evolved from a beloved pet,`,
+    `with a personality and expression that reflects the name "${safeName}",`,
     `${el.promptKeywords},`,
     `${t.strengthModifier},`,
     isHighRarity

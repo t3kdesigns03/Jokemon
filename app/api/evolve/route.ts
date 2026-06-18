@@ -9,9 +9,10 @@ const MODEL = 'fal-ai/flux/dev/image-to-image'
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { imageBase64, element, forceTier } = body as {
+    const { imageBase64, element, petName, forceTier } = body as {
       imageBase64?: string
       element: Element
+      petName?: string
       forceTier?: EvolutionTier
     }
 
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
     if (!FAL_KEY) return NextResponse.json({ error: 'FAL API key not configured' }, { status: 500 })
 
     const tier = forceTier ?? rollEvolutionTier()
-    const prompt = buildEvolutionPrompt(element, tier)
+    const prompt = buildEvolutionPrompt(element, tier, petName)
 
     // Use data URL directly — image is pre-compressed client-side to ~100KB
     const imageDataUrl = `data:image/jpeg;base64,${imageBase64}`

@@ -1,11 +1,14 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { motion, AnimatePresence } from 'framer-motion'
 import JokeMonCard from '@/components/JokeMonCard'
 import { getCollection, toggleFavorite, removeCard, type CollectionCard } from '@/lib/collection'
 import { TIERS, ELEMENTS, type EvolutionTier, type Element } from '@/lib/evolution'
+
+const Card3DViewer = dynamic(() => import('@/components/Card3DViewer'), { ssr: false })
 
 type Filter = 'all' | EvolutionTier
 type ElemFilter = 'all' | Element
@@ -31,6 +34,7 @@ export default function CollectionPage() {
   const [elemFilter, setElemFilter] = useState<ElemFilter>('all')
   const [sort, setSort] = useState<Sort>('newest')
   const [selected, setSelected] = useState<CollectionCard | null>(null)
+  const [viewing3D, setViewing3D] = useState<CollectionCard | null>(null)
   const [gridKey, setGridKey] = useState(0)
 
   useEffect(() => { setCards(getCollection()) }, [])
@@ -273,9 +277,27 @@ export default function CollectionPage() {
               onClick={e => e.stopPropagation()}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}
             >
-              <JokeMonCard card={selected} />
+              <JokeMonCard card={selected} interactive />
+              {selected.tier !== 'starter' && (
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '-8px 0 0', letterSpacing: '0.08em' }}>
+                  ↕ Drag to rotate card
+                </p>
+              )}
 
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'center' }}>
+                <motion.button
+                  onClick={() => { setViewing3D(selected); setSelected(null) }}
+                  whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  style={{
+                    padding: '8px 18px', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer',
+                    border: `1px solid ${TIERS[selected.tier].color}55`,
+                    background: `${TIERS[selected.tier].color}18`,
+                    color: TIERS[selected.tier].color,
+                  }}
+                >
+                  🌀 View in 3D
+                </motion.button>
+
                 {[
                   {
                     label: selected.isFavorite ? '♥ Favorited' : '♡ Favorite',
@@ -344,6 +366,11 @@ export default function CollectionPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* 3D Viewer */}
+      {viewing3D && (
+        <Card3DViewer card={viewing3D} onClose={() => setViewing3D(null)} />
+      )}
     </div>
   )
 }

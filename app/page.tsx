@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { useDropzone } from 'react-dropzone'
 import Image from 'next/image'
 import Link from 'next/link'
@@ -9,6 +10,9 @@ import { toast } from 'sonner'
 import { ELEMENTS, TIERS, type Element, type EvolutionTier } from '@/lib/evolution'
 import { addCard, addXP, generateStats, getCollection, type CollectionCard } from '@/lib/collection'
 import JokeMonCard from '@/components/JokeMonCard'
+
+// Dynamic import — keeps R3F + Three.js out of the main bundle until needed
+const Card3DViewer = dynamic(() => import('@/components/Card3DViewer'), { ssr: false })
 
 type Phase = 'upload' | 'element' | 'evolving' | 'reveal'
 
@@ -209,10 +213,12 @@ export default function Home() {
   const [phase, setPhase] = useState<Phase>('upload')
   const [petFile, setPetFile] = useState<File | null>(null)
   const [petPreviewUrl, setPetPreviewUrl] = useState<string | null>(null)
+  const [petName, setPetName] = useState('')
   const [element, setElement] = useState<Element | null>(null)
   const [result, setResult] = useState<CollectionCard | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [collectionCount, setCollectionCount] = useState(0)
+  const [show3D, setShow3D] = useState(false)
   const confettiRef = useRef<(() => void) | null>(null)
 
   useEffect(() => { setCollectionCount(getCollection().length) }, [])
@@ -262,7 +268,7 @@ export default function Home() {
       const res = await fetch('/api/evolve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ imageBase64: base64, element }),
+        body: JSON.stringify({ imageBase64: base64, element, petName: petName.trim() || 'Fluffy' }),
       })
 
       const data = await res.json()
@@ -270,7 +276,7 @@ export default function Home() {
 
       // Generate stats + save to collection
       const stats = generateStats(data.tier)
-      const card = addCard({ tier: data.tier, element, joKemonImageUrl: data.joKemonImageUrl, ...stats })
+      const card = addCard({ tier: data.tier, element, petName: petName.trim() || 'Fluffy', joKemonImageUrl: data.joKemonImageUrl, ...stats })
 
       // XP + level
       const { data: labData, leveledUp, newLevel } = addXP(data.tier as EvolutionTier)
@@ -321,6 +327,7 @@ export default function Home() {
     setPhase('upload')
     setPetFile(null)
     setPetPreviewUrl(prev => { if (prev) URL.revokeObjectURL(prev); return null })
+    setPetName('')
     setElement(null)
     setResult(null)
     setError(null)
@@ -419,6 +426,36 @@ export default function Home() {
                   </div>
                 </motion.div>
               )}
+
+              {/* Pet Name Input */}
+              <motion.div
+                initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}
+                style={{ marginBottom: 18 }}
+              >
+                <label style={{
+                  display: 'block', fontSize: 11, fontWeight: 700,
+                  color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase',
+                  letterSpacing: '0.12em', marginBottom: 8,
+                }}>
+                  Pet Name <span style={{ color: 'rgba(255,255,255,0.2)', fontWeight: 400 }}>(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={petName}
+                  onChange={e => setPetName(e.target.value)}
+                  placeholder="e.g. Fluffy, Max, Sir Biscuit..."
+                  maxLength={24}
+                  style={{
+                    width: '100%', padding: '12px 16px', borderRadius: 12, fontSize: 16,
+                    background: 'rgba(255,255,255,0.06)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: 'white', outline: 'none', boxSizing: 'border-box',
+                    transition: 'border 0.2s',
+                  }}
+                  onFocus={e => (e.target.style.border = '1px solid rgba(255,255,255,0.4)')}
+                  onBlur={e => (e.target.style.border = '1px solid rgba(255,255,255,0.15)')}
+                />
+              </motion.div>
 
               <motion.h2
                 initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.1 }}
@@ -521,14 +558,33 @@ export default function Home() {
               </motion.div>
 
               <div className="animate-card-reveal">
-                <JokeMonCard card={result} />
+                <JokeMonCard card={result} interactive />
               </div>
+              {result.tier !== 'starter' && (
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', margin: '-8px 0 0', letterSpacing: '0.08em' }}>
+                  ↕ Drag to rotate • holo shifts with angle
+                </p>
+              )}
 
               <motion.div
                 initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 320 }}
               >
+                <motion.button
+                  onClick={() => setShow3D(true)}
+                  whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                  style={{
+                    width: '100%', padding: '12px', borderRadius: 12, textAlign: 'center',
+                    border: `1px solid ${TIERS[result.tier].color}55`,
+                    background: `${TIERS[result.tier].color}15`,
+                    color: TIERS[result.tier].color,
+                    fontWeight: 700, fontSize: 14, cursor: 'pointer',
+                  }}
+                >
+                  🌀 View in 3D
+                </motion.button>
+
                 <a
                   href={`/api/proxy-image?url=${encodeURIComponent(result.joKemonImageUrl)}`}
                   download="my-jokemon.jpg" target="_blank" rel="noopener noreferrer"
@@ -562,6 +618,11 @@ export default function Home() {
 
         </AnimatePresence>
       </main>
+
+      {/* 3D Viewer modal */}
+      {show3D && result && (
+        <Card3DViewer card={result} onClose={() => setShow3D(false)} />
+      )}
     </div>
   )
 }
