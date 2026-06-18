@@ -255,7 +255,9 @@ export default function Home() {
     setError(null)
 
     try {
-      const base64 = await compressImage(petFile, 1024, 0.85)
+      // Mobile connections are slower — compress harder to stay well under payload limits
+      const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
+      const base64 = await compressImage(petFile, mobile ? 640 : 1024, mobile ? 0.7 : 0.82)
 
       const res = await fetch('/api/evolve', {
         method: 'POST',
@@ -307,7 +309,10 @@ export default function Home() {
       }
 
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      console.error('Evolution error:', msg)
+      toast(`Evolution failed: ${msg}`, { icon: '⚠️', duration: 6000 })
+      setError(msg)
       setPhase('element')
     }
   }

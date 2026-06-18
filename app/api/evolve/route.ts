@@ -25,22 +25,31 @@ export async function POST(req: NextRequest) {
     // Use data URL directly — image is pre-compressed client-side to ~100KB
     const imageDataUrl = `data:image/jpeg;base64,${imageBase64}`
 
-    // Synchronous call — waits for result directly
-    const falRes = await fetch(`https://fal.run/${MODEL}`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Key ${FAL_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        image_url: imageDataUrl,
-        prompt,
-        strength: 0.80,
-        num_inference_steps: 10,
-        num_images: 1,
-        enable_safety_checker: true,
-      }),
-    })
+    // Synchronous call — waits for result directly (55s timeout leaves buffer for response)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 55_000)
+
+    let falRes: Response
+    try {
+      falRes = await fetch(`https://fal.run/${MODEL}`, {
+        method: 'POST',
+        signal: controller.signal,
+        headers: {
+          'Authorization': `Key ${FAL_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          image_url: imageDataUrl,
+          prompt,
+          strength: 0.80,
+          num_inference_steps: 10,
+          num_images: 1,
+          enable_safety_checker: true,
+        }),
+      })
+    } finally {
+      clearTimeout(timeout)
+    }
 
     if (!falRes.ok) {
       const errText = await falRes.text()
