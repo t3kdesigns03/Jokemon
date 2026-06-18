@@ -296,24 +296,33 @@ export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petN
   const vibeDesc = analyzeNameVibe(safeName)
   const species = getSpeciesName(element, tier)
 
-  // "Transform this pet" anchors the model on the INPUT image so each pet
-  // produces a unique result. Without this, the model reads only the descriptive
-  // text and generates similar generic creatures regardless of the uploaded photo.
+  // STYLE-FIRST prompt: leading with art style forces the model to generate
+  // anime/cartoon artwork regardless of what photo was uploaded.
+  // At strength 0.92, the input image provides only loose color + composition hints.
   return [
-    `Transform this pet into a ${t.rarity.toLowerCase()} JokeMon creature named "${safeName}" (species: ${species}),`,
-    `preserving the subject's face shape, body proportions, and distinctive markings,`,
+    // Art style must come first — this dominates generation
+    'Official Pokemon TCG card illustration, anime art style, cartoon creature character design,',
+    'digital painting, vibrant saturated colors, expressive cute eyes, clean anime linework,',
+    isHighRarity
+      ? 'Special Illustration Rare full-bleed cinematic composition, painterly brushwork, dramatic lighting,'
+      : 'clean card art composition, soft elemental background lighting,',
+
+    // Character identity
+    `a ${t.rarity.toLowerCase()} creature named "${safeName}" the ${species},`,
     `with ${vibeDesc},`,
+
+    // Element visual style
     `${el.promptKeywords},`,
+
+    // Tier-specific art direction
     `${t.strengthModifier},`,
+
+    // Quality + anti-realism
+    'professional trading card game artwork, fantasy creature illustration,',
+    'no humans, no photorealism, no photographs, illustrated cartoon character only,',
     isHighRarity
-      ? 'Pokemon TCG Special Illustration Rare full-art style, dramatic cinematic composition, rich painterly detail,'
-      : 'Pokemon TCG card art style, anime illustration, clean composition,',
-    'vibrant hyper-saturated colors,',
-    isHighRarity
-      ? 'immersive elemental background environment, no card border, artwork bleeds to edges,'
-      : 'dark background with elemental lighting,',
-    'official trading card game artwork quality,',
-    'professional digital illustration, 4K ultra detailed',
+      ? 'immersive elemental environment background, artwork bleeds to edges, 4K ultra detailed'
+      : 'dark elemental background, high quality digital art',
   ].join(' ')
 }
 

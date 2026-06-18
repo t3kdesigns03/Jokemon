@@ -40,8 +40,8 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           image_url: imageDataUrl,
           prompt,
-          strength: 0.60,
-          num_inference_steps: 20,
+          strength: 0.92,
+          num_inference_steps: 28,
           num_images: 1,
           seed: Math.floor(Math.random() * 9_999_999),
           enable_safety_checker: true,

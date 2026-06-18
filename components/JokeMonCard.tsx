@@ -184,15 +184,7 @@ function IllustrationOverlay({ tier }: { tier: EvolutionTier }) {
         }} />
       )}
 
-      {/* ── Layer 6: Legendary — random energy flicker ───────────────────── */}
-      {/* Sporadic radial glow bursts for that "alive" legendary feel.           */}
-      {/* Timing is baked into the CSS keyframe (see globals.css).               */}
-      {tier === 'legendary' && (
-        <div
-          className="legendary-flicker"
-          style={{ position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 'inherit' }}
-        />
-      )}
+      {/* ── Layer 6: removed — flicker reserved for special illustration reveals only ── */}
     </>
   )
 }
