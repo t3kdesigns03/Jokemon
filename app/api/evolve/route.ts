@@ -43,6 +43,7 @@ export async function POST(req: NextRequest) {
           strength: 0.60,
           num_inference_steps: 20,
           num_images: 1,
+          seed: Math.floor(Math.random() * 9_999_999),
           enable_safety_checker: true,
         }),
       })
