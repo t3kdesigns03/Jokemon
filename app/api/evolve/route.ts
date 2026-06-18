@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
         image_url: imageDataUrl,
         prompt,
         strength: 0.80,
-        num_inference_steps: 8,
+        num_inference_steps: 10,
         num_images: 1,
         enable_safety_checker: true,
       }),
