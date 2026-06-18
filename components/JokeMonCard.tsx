@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
-import { ELEMENTS, TIERS } from '@/lib/evolution'
+import { ELEMENTS, TIERS, getSpeciesName } from '@/lib/evolution'
 import type { CollectionCard } from '@/lib/collection'
 
 interface JokeMonCardProps {
@@ -188,6 +188,9 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
   const cardWidth = compact ? 160 : 'min(320px, calc(100vw - 40px))'
   const maxStat = tier === 'legendary' ? 200 : tier === 'champion' ? 130 : tier === 'evolved' ? 90 : 60
   const displayName = (petName || 'Fluffy').toUpperCase()
+  const species = getSpeciesName(element, tier)
+  // Show species subtitle on evolved+ cards
+  const showSpecies = !compact && (tier === 'evolved' || tier === 'champion' || tier === 'legendary')
 
   useEffect(() => { if (cfg.showSparkles) setShowSparkles(true) }, [cfg.showSparkles])
 
@@ -221,18 +224,32 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
         </div>
       </div>
 
-      {/* Pet Name */}
+      {/* Pet Name + Species */}
       {!compact && (
-        <div style={{
-          textAlign: 'center', padding: '6px 14px 2px',
-          fontSize: '1.1em', fontWeight: 900,
-          letterSpacing: '0.08em',
-          color: cfg.isRainbow ? '#fbbf24' : cfg.isEpic ? '#c084fc' : 'rgba(255,255,255,0.85)',
-          textShadow: cfg.isRainbow
-            ? '0 0 12px rgba(251,191,36,0.8)'
-            : cfg.isEpic ? '0 0 10px rgba(168,85,247,0.6)' : 'none',
-        }}>
-          {displayName}
+        <div style={{ textAlign: 'center', padding: '6px 14px 2px' }}>
+          <div style={{
+            fontSize: '1.1em', fontWeight: 900,
+            letterSpacing: '0.08em',
+            color: cfg.isRainbow ? '#fbbf24' : cfg.isEpic ? '#c084fc' : 'rgba(255,255,255,0.85)',
+            textShadow: cfg.isRainbow
+              ? '0 0 12px rgba(251,191,36,0.8)'
+              : cfg.isEpic ? '0 0 10px rgba(168,85,247,0.6)' : 'none',
+          }}>
+            {displayName}
+          </div>
+          {showSpecies && (
+            <div style={{
+              fontSize: '0.52em', fontWeight: 600, letterSpacing: '0.1em',
+              textTransform: 'uppercase', marginTop: 1,
+              color: cfg.isRainbow
+                ? 'rgba(251,191,36,0.65)'
+                : cfg.isEpic
+                ? 'rgba(192,132,252,0.65)'
+                : 'rgba(148,163,184,0.55)',
+            }}>
+              the {species}
+            </div>
+          )}
         </div>
       )}
 

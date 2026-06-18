@@ -119,6 +119,171 @@ export const ELEMENTS: Record<Element, {
   },
 }
 
+// ─── Species Names (element × tier) ──────────────────────────────────────────
+
+const SPECIES: Record<Element, Record<EvolutionTier, string>> = {
+  water: {
+    starter:   'Aqua Pup',
+    evolved:   'Tide Sprite',
+    champion:  'Storm Leviathan',
+    legendary: 'Cosmic Tide God',
+  },
+  fire: {
+    starter:   'Ember Kit',
+    evolved:   'Flame Fox',
+    champion:  'Inferno Drake',
+    legendary: 'Sol Phoenix',
+  },
+  wind: {
+    starter:   'Gale Pup',
+    evolved:   'Storm Wing',
+    champion:  'Thunder Hawk',
+    legendary: 'Sky Sovereign',
+  },
+}
+
+export function getSpeciesName(element: Element, tier: EvolutionTier): string {
+  return SPECIES[element][tier]
+}
+
+// ─── Name → Personality Vibe ──────────────────────────────────────────────────
+
+interface NameVibe {
+  descriptor: string
+  traits: string
+}
+
+const VIBE_PATTERNS: Array<{ pattern: RegExp; vibe: NameVibe }> = [
+  {
+    pattern: /\b(god|goddess|deity|divine|celestial|supreme|almighty|omnipotent|eternal)\b/i,
+    vibe: {
+      descriptor: 'divine and all-powerful',
+      traits: 'radiating godlike aura, wearing ancient divine artifacts, floating above the ground on pillars of elemental energy, eyes glowing with cosmic power, sacred geometry halo',
+    },
+  },
+  {
+    pattern: /\b(lord|master|king|queen|emperor|empress|overlord|sovereign|ruler|pharaoh)\b/i,
+    vibe: {
+      descriptor: 'regal and commanding',
+      traits: 'wearing an ornate crown and battle regalia, sitting atop a throne of crystallized elements, with an expression of absolute authority and confidence, surrounded by royal elemental flourishes',
+    },
+  },
+  {
+    pattern: /\b(mega|ultra|hyper|turbo|maximum|extreme|xtra|xtreme|maxi|max|giga|omega)\b/i,
+    vibe: {
+      descriptor: 'over-the-top and maximum power',
+      traits: 'muscles bulging with elemental energy, dramatic speed lines erupting everywhere, screaming a battle cry with maximum intensity, multiple glowing power auras stacked, power levels over 9000',
+    },
+  },
+  {
+    pattern: /\b(super|super\s*duper|number\s*one|number\s*1|best|greatest|strongest|undefeated)\b/i,
+    vibe: {
+      descriptor: 'supremely confident and try-hard',
+      traits: 'flexing both arms with enormous muscles, wearing a championship belt and gold medal, surrounded by trophy icons, pointing finger guns at the viewer, enormous grin of pure confidence',
+    },
+  },
+  {
+    pattern: /\b(chaos|mayhem|havoc|apocalypse|armageddon|anarchy|destruction|carnage)\b/i,
+    vibe: {
+      descriptor: 'gloriously chaotic and unhinged',
+      traits: 'wild manic gleaming eyes, chaos energy erupting randomly from its body, surrounded by swirling vortex of destruction, laughing maniacally, reality cracking behind it',
+    },
+  },
+  {
+    pattern: /\b(doom|dread|death|grim|dark|shadow|void|abyss|nightmare|evil|sinister|devil|demon|phantom|specter)\b/i,
+    vibe: {
+      descriptor: 'ominously dark and menacing',
+      traits: 'surrounded by dark smoke tendrils, glowing crimson menacing eyes, wearing dark spiked armor with skull motifs, emanating waves of dark elemental energy, sinister smirk',
+    },
+  },
+  {
+    pattern: /\b(fluffy|fuzzy|puffy|fluff|puff|cloud|cotton|soft|cozy|snuggle|snuggles|cuddle|cuddles)\b/i,
+    vibe: {
+      descriptor: 'irresistibly fluffy and soft',
+      traits: 'covered in impossibly thick magnificent fluff, perfectly round like a cloud, radiating warmth and comfort, eyes sparkling with pure sweetness, tiny cute paws',
+    },
+  },
+  {
+    pattern: /\b(tiny|mini|small|little|baby|smol|itty|bitty|wee|micro|nano|petit)\b/i,
+    vibe: {
+      descriptor: 'tiny but insanely fierce',
+      traits: 'extremely tiny but puffed up trying to look big, disproportionately large determined eyes, tiny fists raised in defiance, giant elemental power emanating from tiny body, "don\'t underestimate me" energy',
+    },
+  },
+  {
+    pattern: /\b(princess|prince|duchess|duke|baroness|baron|countess|count|sir|dame|lady|earl|marquis)\b/i,
+    vibe: {
+      descriptor: 'noble and aristocratic',
+      traits: 'wearing elegant royal garments and sparkling tiara, looking down with dignified expression, holding a tiny jeweled scepter, surrounded by royal elemental flourishes, impeccably groomed',
+    },
+  },
+  {
+    pattern: /\b(grumpy|grump|angry|mad|rage|furious|cross|cranky|irritable|mean|salty|moody)\b/i,
+    vibe: {
+      descriptor: 'permanently grumpy and expressive',
+      traits: 'intense furrowed brow and scowling deeply, arms crossed, begrudgingly powerful, grumpy eyebrows angled inward, wearing a frown so deep it has its own weather system',
+    },
+  },
+  {
+    pattern: /\b(potato|spud|nugget|bean|dumpling|noodle|pickle|cheese|taco|burrito|sausage|biscuit|cracker|muffin|waffle)\b/i,
+    vibe: {
+      descriptor: 'delightfully absurd and food-themed',
+      traits: 'incorporating the food item into its design with textures and colors matching its namesake, looking equal parts delicious and terrifyingly powerful, completely unaware of how ridiculous it looks, deeply earnest expression',
+    },
+  },
+  {
+    pattern: /\b(genius|professor|doctor|dr|scientist|einstein|professor|brainiac|intellectual|scholar)\b/i,
+    vibe: {
+      descriptor: 'intensely intellectual and scheming',
+      traits: 'wearing tiny spectacles, surrounded by floating equations and blueprints, scheming expression of a creature that is three steps ahead of you, dramatically large brain, multiple inventions floating nearby',
+    },
+  },
+  {
+    pattern: /\b(yolo|swag|drip|vibe|vibes|dank|poggers|goat|based|slay|slaying|rizz|sigma)\b/i,
+    vibe: {
+      descriptor: 'maximum swagger and drip',
+      traits: 'wearing sunglasses and chains, extremely relaxed confident pose, elemental energy styled like designer brands, aura that says "too cool for this trading card", inexplicable sunglasses even indoors',
+    },
+  },
+  {
+    pattern: /\b(dobby|house|elf|elves|gnome|sprite|pixie|fairy|imp|goblin|gremlin)\b/i,
+    vibe: {
+      descriptor: 'loyal with enormous expressive eyes',
+      traits: 'enormous soulful puppy eyes that take up half the face, oversized pointed ears, earnest expression full of devotion and eagerness to please, ready to protect and serve at all costs',
+    },
+  },
+  {
+    pattern: /\b(captain|commander|general|admiral|colonel|major|sergeant|chief|boss|leader)\b/i,
+    vibe: {
+      descriptor: 'a born leader and tactician',
+      traits: 'wearing a decorated military uniform with many medals, pointing heroically into the distance, elemental energy forming battle formations, unwavering determined expression of someone who has seen many battles',
+    },
+  },
+]
+
+function analyzeNameVibe(name: string): string {
+  const found = VIBE_PATTERNS.find(v => v.pattern.test(name))
+  if (found) {
+    return `${found.vibe.descriptor} personality, ${found.vibe.traits}`
+  }
+
+  // Fallback heuristics based on name structure
+  const words = name.trim().split(/\s+/)
+  if (words.length >= 3) {
+    // Long multi-word names get an elaborate, grand treatment
+    return `an epic personality befitting the grand name "${name}", elaborate appearance with multiple distinguishing features, dramatic pose that fills the frame`
+  }
+  if (name.length <= 3) {
+    // Very short names are mysterious
+    return `mysterious and deceptively simple, cryptic ancient power hidden within an unassuming exterior, subtle but intense gaze`
+  }
+
+  // Generic but strong — uses the actual name for personality
+  return `a distinct personality that perfectly embodies the spirit of "${name}", memorable expressive features, unique striking pose that feels true to its name`
+}
+
+// ─── Public API ───────────────────────────────────────────────────────────────
+
 export function rollEvolutionTier(): EvolutionTier {
   const roll = Math.random()
   if (roll < TIERS.starter.chance) return 'starter'
@@ -132,10 +297,13 @@ export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petN
   const t = TIERS[tier]
   const isHighRarity = tier === 'champion' || tier === 'legendary'
   const safeName = petName.trim() || 'Fluffy'
+  const vibeDesc = analyzeNameVibe(safeName)
+  const species = getSpeciesName(element, tier)
 
   return [
-    `A ${t.rarity.toLowerCase()} JokeMon creature named ${safeName} evolved from a beloved pet,`,
-    `with a personality and expression that reflects the name "${safeName}",`,
+    `A ${t.rarity.toLowerCase()} JokeMon creature called "${safeName}" (species: ${species}),`,
+    `with ${vibeDesc},`,
+    `evolved from a beloved pet,`,
     `${el.promptKeywords},`,
     `${t.strengthModifier},`,
     isHighRarity

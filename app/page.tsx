@@ -10,6 +10,7 @@ import { toast } from 'sonner'
 import { ELEMENTS, TIERS, type Element, type EvolutionTier } from '@/lib/evolution'
 import { addCard, addXP, generateStats, getCollection, type CollectionCard } from '@/lib/collection'
 import JokeMonCard from '@/components/JokeMonCard'
+import ShareButton from '@/components/ShareButton'
 
 // Dynamic import — keeps R3F + Three.js out of the main bundle until needed
 const Card3DViewer = dynamic(() => import('@/components/Card3DViewer'), { ssr: false })
@@ -571,6 +572,9 @@ export default function Home() {
                 transition={{ delay: 0.5 }}
                 style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%', maxWidth: 320 }}
               >
+                {/* Share CTA — the big viral button */}
+                <ShareButton card={result} />
+
                 <motion.button
                   onClick={() => setShow3D(true)}
                   whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
@@ -584,18 +588,6 @@ export default function Home() {
                 >
                   🌀 View in 3D
                 </motion.button>
-
-                <a
-                  href={`/api/proxy-image?url=${encodeURIComponent(result.joKemonImageUrl)}`}
-                  download="my-jokemon.jpg" target="_blank" rel="noopener noreferrer"
-                  style={{
-                    display: 'block', padding: '12px', borderRadius: 12, textAlign: 'center',
-                    border: '1px solid rgba(255,255,255,0.18)', color: 'rgba(255,255,255,0.65)',
-                    textDecoration: 'none', fontWeight: 600, fontSize: 14,
-                  }}
-                >
-                  ⬇ Download JokeMon
-                </a>
 
                 <Link href="/collection" style={{
                   display: 'block', padding: '12px', borderRadius: 12, textAlign: 'center',
