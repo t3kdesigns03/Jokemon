@@ -78,6 +78,32 @@ function compressImage(file: File, maxDim: number, quality: number): Promise<str
   })
 }
 
+// Fallback for mobile/HEIC: read file directly without canvas resize
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      resolve(result.split(',')[1])
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(file)
+  })
+}
+
+async function getImageBase64(file: File, mobile: boolean): Promise<string> {
+  try {
+    return await compressImage(file, mobile ? 640 : 1024, mobile ? 0.7 : 0.82)
+  } catch {
+    // Canvas failed (common on iOS HEIC) — fall back to direct file read
+    try {
+      return await compressImage(file, 480, 0.65)
+    } catch {
+      return await readFileAsBase64(file)
+    }
+  }
+}
+
 // ─── Pack visual ──────────────────────────────────────────────────────────────
 
 function PackFace({ element, shimmer }: { element: Element; shimmer?: boolean }) {
@@ -375,8 +401,12 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
     async function generate() {
       let base64: string
       try {
-        base64 = await compressImage(petFile, mobile ? 640 : 1024, mobile ? 0.7 : 0.82)
-      } catch { return }
+        base64 = await getImageBase64(petFile, mobile)
+      } catch {
+        // All compression attempts failed — mark all cards as error
+        setPackCards(prev => prev.map((c) => ({ ...c, status: 'error' as const, error: 'Image failed' })))
+        return
+      }
 
       for (let i = 0; i < PACK_COUNT; i++) {
         const idx = i

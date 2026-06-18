@@ -97,11 +97,11 @@ function IllustrationOverlay({ tier }: { tier: EvolutionTier }) {
   const shineX = 50 + ry * 1.8
   const shineY = 50 - rx * 1.8
 
-  // Per-tier base opacity and rainbow intensity
-  const foilBase       = { evolved: 0.06, champion: 0.16, legendary: 0.26 }[tier] ?? 0
-  const rotBoost       = rotMag * 0.72  // additional opacity when tilted
-  const foilOp         = Math.min(0.92, foilBase + rotBoost)
-  const rainbowStr     = { evolved: 0.32, champion: 0.62, legendary: 0.95 }[tier] ?? 0
+  // Per-tier base opacity and rainbow intensity — keep subtle at rest, vivid when tilted
+  const foilBase       = { evolved: 0.03, champion: 0.08, legendary: 0.14 }[tier] ?? 0
+  const rotBoost       = rotMag * 0.48  // additional opacity when tilted
+  const foilOp         = Math.min(0.65, foilBase + rotBoost)
+  const rainbowStr     = { evolved: 0.18, champion: 0.38, legendary: 0.62 }[tier] ?? 0
 
   return (
     <>
@@ -153,9 +153,9 @@ function IllustrationOverlay({ tier }: { tier: EvolutionTier }) {
         <div style={{
           position: 'absolute', inset: 0, pointerEvents: 'none', borderRadius: 'inherit',
           background: `radial-gradient(circle at ${shineX}% ${shineY}%,
-            rgba(255,255,255,${0.55 + rotMag * 0.4}) 0%, transparent 26%)`,
+            rgba(255,255,255,${0.35 + rotMag * 0.25}) 0%, transparent 26%)`,
           // Only visible when tilted — fades to 0 when face-on
-          opacity: rotMag * (tier === 'legendary' ? 0.9 : 0.7),
+          opacity: rotMag * (tier === 'legendary' ? 0.65 : 0.5),
           mixBlendMode: 'screen',
         }} />
       )}
@@ -412,7 +412,15 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
         )}
 
         <img
-          src={proxyUrl} alt={displayName} onLoad={() => setImgLoaded(true)}
+          src={proxyUrl} alt={displayName}
+          onLoad={() => setImgLoaded(true)}
+          onError={e => {
+            // Image failed — show element emoji as fallback so card isn't a black box
+            const el = e.currentTarget.parentElement
+            if (el) el.style.background = '#0a0a14'
+            e.currentTarget.style.display = 'none'
+            setImgLoaded(true)
+          }}
           style={{
             width: '100%', height: '100%', objectFit: 'cover', display: 'block',
             opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.4s ease',
