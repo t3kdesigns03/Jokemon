@@ -25,7 +25,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-slate-700 to-slate-800',
     stars: 1,
     emoji: '✨',
-    strengthModifier: 'cute, small, basic elemental markings, chibi style',
+    strengthModifier: 'cute chibi style, small and friendly, soft pastel elemental markings, simple glow outline, clean design',
   },
   evolved: {
     name: 'evolved',
@@ -37,7 +37,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-blue-700 to-indigo-800',
     stars: 2,
     emoji: '💫',
-    strengthModifier: 'medium-sized, powerful, prominent elemental features, glowing eyes',
+    strengthModifier: 'medium-sized, confident battle stance, vivid glowing eyes, shimmering elemental markings, bright saturated colors, detailed fur or scales, soft inner glow effect',
   },
   champion: {
     name: 'champion',
@@ -49,7 +49,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-purple-700 to-fuchsia-800',
     stars: 3,
     emoji: '⚡',
-    strengthModifier: 'large, majestic, blazing elemental energy, battle armor, fierce expression',
+    strengthModifier: 'large and imposing, dramatic dynamic pose, blazing neon elemental energy radiating outward, iridescent holographic sheen on body, ultra-vivid jewel-toned colors, glowing battle armor accents, intense glowing eyes, energy particles swirling, highly detailed illustration',
   },
   legendary: {
     name: 'legendary',
@@ -61,7 +61,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-yellow-500 to-orange-600',
     stars: 4,
     emoji: '👑',
-    strengthModifier: 'colossal, divine, otherworldly elemental transcendence, celestial aura, holographic shimmer, god-tier creature design',
+    strengthModifier: 'colossal god-tier creature, explosive full-art illustration, blinding radiant light bursting from body, rainbow prismatic holographic aura, metallic gold and platinum sheen, divine celestial markings, chromatic aberration glow, otherworldly transcendence, maximum detail ultra-HD, cinematic dramatic lighting, spectacular beyond imagination',
   },
 }
 
@@ -135,11 +135,11 @@ export function buildEvolutionPrompt(element: Element, tier: EvolutionTier): str
     `A ${t.rarity.toLowerCase()} JokeMon creature evolved from a pet,`,
     `${el.promptKeywords},`,
     `${t.strengthModifier},`,
-    'Pokemon-style character design, anime art style,',
-    'vibrant saturated colors, dynamic pose,',
-    'clean white or transparent background,',
-    'high quality digital illustration, studio lighting,',
-    'creature concept art, 4K, detailed',
+    'Pokemon TCG card art style, anime illustration,',
+    'vibrant hyper-saturated colors, bold outlines,',
+    'black background with dramatic elemental lighting,',
+    'official trading card game artwork quality,',
+    'professional digital illustration, 4K ultra detailed',
   ].join(' ')
 }
 
