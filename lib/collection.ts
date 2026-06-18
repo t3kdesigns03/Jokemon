@@ -52,6 +52,38 @@ export function removeCard(id: string): CollectionCard[] {
   return col
 }
 
+// ─── Lab Level / XP ──────────────────────────────────────────────────────────
+
+export interface LabData { xp: number; level: number; totalPulls: number }
+
+const XP_PER_TIER: Record<EvolutionTier, number> = {
+  starter: 10, evolved: 25, champion: 50, legendary: 100,
+}
+const XP_PER_LEVEL = 100
+const LAB_KEY = 'pokepet-lab-v1'
+
+export function getLabData(): LabData {
+  if (typeof window === 'undefined') return { xp: 0, level: 1, totalPulls: 0 }
+  try { return JSON.parse(localStorage.getItem(LAB_KEY) || '{"xp":0,"level":1,"totalPulls":0}') }
+  catch { return { xp: 0, level: 1, totalPulls: 0 } }
+}
+
+export function addXP(tier: EvolutionTier): { data: LabData; leveledUp: boolean; newLevel: number } {
+  const data = getLabData()
+  data.xp += XP_PER_TIER[tier]
+  data.totalPulls += 1
+  let leveledUp = false
+  while (data.xp >= XP_PER_LEVEL) {
+    data.xp -= XP_PER_LEVEL
+    data.level += 1
+    leveledUp = true
+  }
+  localStorage.setItem(LAB_KEY, JSON.stringify(data))
+  return { data, leveledUp, newLevel: data.level }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 export function generateStats(tier: EvolutionTier): {
   hp: number; atk: number; def: number; spd: number; cardNumber: number
 } {

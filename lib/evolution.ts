@@ -49,7 +49,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-purple-700 to-fuchsia-800',
     stars: 3,
     emoji: '⚡',
-    strengthModifier: 'large and imposing, dramatic dynamic pose, blazing neon elemental energy radiating outward, iridescent holographic sheen on body, ultra-vivid jewel-toned colors, glowing battle armor accents, intense glowing eyes, energy particles swirling, highly detailed illustration',
+    strengthModifier: 'Special Illustration Rare SIR card art style, full-bleed artwork filling edge to edge, creature bursting dramatically OUT OF THE FRAME with energy, sprawling cinematic scene behind it, stormy atmospheric background with elemental destruction, ultra-painterly brushwork, neon chromatic energy trails, dynamic explosion pose, glowing crystalline battle armor, intensely saturated jewel colors, professional concept art quality, breathtaking wow-factor illustration',
   },
   legendary: {
     name: 'legendary',
@@ -61,7 +61,7 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-yellow-500 to-orange-600',
     stars: 4,
     emoji: '👑',
-    strengthModifier: 'colossal god-tier creature, explosive full-art illustration, blinding radiant light bursting from body, rainbow prismatic holographic aura, metallic gold and platinum sheen, divine celestial markings, chromatic aberration glow, otherworldly transcendence, maximum detail ultra-HD, cinematic dramatic lighting, spectacular beyond imagination',
+    strengthModifier: 'Secret Rare gold foil card art, divine god creature descending from heavens, blinding prismatic rainbow light explosion, full-art cinematic masterpiece, creature radiating transcendent golden aura with chromatic halo, celestial sacred geometry patterns, platinum and rainbow metallic sheen, surrounded by cosmic starfield and divine lightning, ultra-HD maximum detail, the most spectacular creature illustration ever created, jaw-dropping legendary quality',
   },
 }
 
@@ -130,14 +130,19 @@ export function rollEvolutionTier(): EvolutionTier {
 export function buildEvolutionPrompt(element: Element, tier: EvolutionTier): string {
   const el = ELEMENTS[element]
   const t = TIERS[tier]
+  const isHighRarity = tier === 'champion' || tier === 'legendary'
 
   return [
     `A ${t.rarity.toLowerCase()} JokeMon creature evolved from a pet,`,
     `${el.promptKeywords},`,
     `${t.strengthModifier},`,
-    'Pokemon TCG card art style, anime illustration,',
-    'vibrant hyper-saturated colors, bold outlines,',
-    'black background with dramatic elemental lighting,',
+    isHighRarity
+      ? 'Pokemon TCG Special Illustration Rare full-art style, dramatic cinematic composition, rich painterly detail,'
+      : 'Pokemon TCG card art style, anime illustration, clean composition,',
+    'vibrant hyper-saturated colors,',
+    isHighRarity
+      ? 'immersive elemental background environment, no card border, artwork bleeds to edges,'
+      : 'dark background with elemental lighting,',
     'official trading card game artwork quality,',
     'professional digital illustration, 4K ultra detailed',
   ].join(' ')
