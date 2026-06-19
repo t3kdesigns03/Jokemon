@@ -153,48 +153,50 @@ async function buildCardTexture(card: CollectionCard): Promise<THREE.CanvasTextu
     //   2. Brushstroke crosshatch — short directional lines simulating paint
     //   3. Vignette depth — darkened edges push subject forward (legendary only)
     if (tier === 'champion' || tier === 'legendary') {
-      const grainDensity  = tier === 'legendary' ? 0.38 : 0.22
-      const grainOpacity  = tier === 'legendary' ? 0.045 : 0.028
-      const strokeCount   = tier === 'legendary' ? 320 : 140
+      // ── Painterly texture — canvas-draw only (no getImageData/putImageData) ──
+      // getImageData taints the canvas on iOS Safari even through same-origin proxy,
+      // crashing buildCardTexture and leaving champion/legendary blank on mobile.
+      // All texture is produced with draw calls only — safe on every browser.
+      const grainCount    = tier === 'legendary' ? 4800 : 2600
+      const grainOpacity  = tier === 'legendary' ? 0.055 : 0.032
+      const strokeCount   = tier === 'legendary' ? 280 : 120
       const strokeLen     = tier === 'legendary' ? 10 : 6
-      const strokeOpacity = tier === 'legendary' ? 0.038 : 0.022
+      const strokeOpacity = tier === 'legendary' ? 0.042 : 0.024
 
       ctx.save()
       rRect(ctx, imgX, imgY, imgW, imgH, 13); ctx.clip()
 
-      // 1. Film grain — tiny luminance variation pixel-by-pixel
-      const imageData = ctx.getImageData(imgX, imgY, imgW, imgH)
-      const pixels = imageData.data
-      for (let p = 0; p < pixels.length; p += 4) {
-        if (Math.random() < grainDensity) {
-          const grain = (Math.random() - 0.5) * 28
-          pixels[p]     = Math.max(0, Math.min(255, pixels[p]     + grain))
-          pixels[p + 1] = Math.max(0, Math.min(255, pixels[p + 1] + grain))
-          pixels[p + 2] = Math.max(0, Math.min(255, pixels[p + 2] + grain))
-        }
-      }
-      ctx.putImageData(imageData, imgX, imgY)
-
-      // 2. Crosshatch brushstrokes — short lines in 4 directional families
-      const strokeAngles = [15, 45, 105, 150]
+      // 1. Film grain — tiny 1×1 dots at random positions, alternating light/dark
+      //    Drawn with 'overlay' blend so they lighten light areas, darken dark areas
+      //    (exact same perceptual result as pixel-level noise, no pixel access needed)
       ctx.globalCompositeOperation = 'overlay'
+      for (let g = 0; g < grainCount; g++) {
+        const gx = imgX + Math.random() * imgW
+        const gy = imgY + Math.random() * imgH
+        const bright = Math.random() > 0.5 ? 255 : 0
+        ctx.fillStyle = `rgba(${bright},${bright},${bright},${grainOpacity})`
+        ctx.fillRect(gx, gy, 1.2, 1.2)
+      }
+
+      // 2. Crosshatch brushstrokes — short directional lines in 4 angle families
+      const strokeAngles = [15, 45, 105, 150]
       for (let s = 0; s < strokeCount; s++) {
         const sx = imgX + Math.random() * imgW
         const sy = imgY + Math.random() * imgH
         const angleDeg = strokeAngles[Math.floor(Math.random() * strokeAngles.length)] + (Math.random() - 0.5) * 22
         const angleRad = angleDeg * Math.PI / 180
         const len = strokeLen * (0.6 + Math.random() * 0.8)
-        const brightness = 120 + Math.floor(Math.random() * 136)
+        const brightness = 110 + Math.floor(Math.random() * 145)
         ctx.beginPath()
         ctx.moveTo(sx, sy)
         ctx.lineTo(sx + Math.cos(angleRad) * len, sy + Math.sin(angleRad) * len)
         ctx.strokeStyle = `rgba(${brightness},${brightness},${brightness},${strokeOpacity})`
-        ctx.lineWidth = 0.6 + Math.random() * 0.6
+        ctx.lineWidth = 0.5 + Math.random() * 0.7
         ctx.stroke()
       }
       ctx.globalCompositeOperation = 'source-over'
 
-      // 3. Edge vignette (legendary only) — pulls viewer focus to center subject
+      // 3. Edge vignette (legendary only) — darkens edges to focus eye on subject
       if (tier === 'legendary') {
         const vignette = ctx.createRadialGradient(
           imgX + imgW / 2, imgY + imgH / 2, imgW * 0.28,
@@ -207,7 +209,6 @@ async function buildCardTexture(card: CollectionCard): Promise<THREE.CanvasTextu
       }
 
       ctx.restore()
-      void grainOpacity // used implicitly via density above; suppress lint
     }
 
     // ── Holo dot-grid overlay (Rare+) ─────────────────────────────────────
