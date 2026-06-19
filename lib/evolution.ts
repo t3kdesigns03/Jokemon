@@ -25,7 +25,11 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-slate-700 to-slate-800',
     stars: 1,
     emoji: '✨',
-    strengthModifier: 'cute chibi style, small and friendly, soft pastel elemental markings, simple glow outline, clean design',
+    // ── COMMON card art style ──
+    // Art stays inside the illustration box. Creature is centered, readable,
+    // and approachable. Background is a simple gradient or flat color. This is
+    // the bread-and-butter workhorse card — clean, functional, no frills.
+    strengthModifier: 'Pokemon TCG common card illustration style, creature centered in frame on a simple clean gradient background, contained within the card illustration box, straightforward friendly pose, soft elemental color wash behind it, clean simple design, cute chibi proportions, no complex background details, the character is the entire focus',
   },
   evolved: {
     name: 'evolved',
@@ -37,7 +41,12 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-blue-700 to-indigo-800',
     stars: 2,
     emoji: '💫',
-    strengthModifier: 'medium-sized, confident battle stance, vivid glowing eyes, shimmering elemental markings, bright saturated colors, detailed fur or scales, soft inner glow effect',
+    // ── RARE HOLO card art style ──
+    // More polished than common — still box-contained but with a richer
+    // background. Dynamic confident pose, environmental texture (rocks, clouds,
+    // elemental particles), creature slightly larger with glowing eyes and
+    // visible energy markings. Think Scarlet & Violet Rare cards.
+    strengthModifier: 'Pokemon TCG rare holo card illustration style, creature in a confident dynamic battle-ready pose, contained within illustration frame, richly detailed background with elemental environment textures and atmospheric depth, glowing expressive eyes, shimmering elemental markings on the body, vivid saturated colors, dramatic lighting from below, detailed fur scales or feathers, soft inner glow radiating from the creature, polished professional TCG rare card quality',
   },
   champion: {
     name: 'champion',
@@ -49,7 +58,14 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-purple-700 to-fuchsia-800',
     stars: 3,
     emoji: '⚡',
-    strengthModifier: 'Special Illustration Rare SIR card art style, full-bleed artwork filling edge to edge, creature bursting dramatically OUT OF THE FRAME with energy, sprawling cinematic scene behind it, stormy atmospheric background with elemental destruction, ultra-painterly brushwork, neon chromatic energy trails, dynamic explosion pose, glowing crystalline battle armor, intensely saturated jewel colors, professional concept art quality, breathtaking wow-factor illustration',
+    // ── ILLUSTRATION RARE (IR) card art style ──
+    // Art fully bleeds to card edges — no frame containment. The philosophy
+    // shifts from "battle pose" to "artistic scene." The creature is shown
+    // in a painterly lifestyle or action moment: a story is being told.
+    // Composition uses unique angles (low angle, overhead, dramatic close-up).
+    // Background is a full painted environment with real depth and atmosphere.
+    // Think Paldean Fates / Paradox Rift Illustration Rares.
+    strengthModifier: 'Pokemon TCG Illustration Rare IR card art style, full-bleed artwork that fills completely edge to edge with no border, painterly artistic composition telling a visual story, unique creative camera angle (low angle or dynamic perspective), creature in an expressive moment that conveys personality not just power, richly painted atmospheric background environment with genuine depth and layered detail, impressionistic brushwork with visible paint texture, cinematic mood lighting, the entire card surface is a unified painting, gallery-quality Pokemon TCG illustration',
   },
   legendary: {
     name: 'legendary',
@@ -61,7 +77,16 @@ export const TIERS: Record<EvolutionTier, TierConfig> = {
     bgGradient: 'from-yellow-500 to-orange-600',
     stars: 4,
     emoji: '👑',
-    strengthModifier: 'Secret Rare gold foil card art, divine god creature descending from heavens, blinding prismatic rainbow light explosion, full-art cinematic masterpiece, creature radiating transcendent golden aura with chromatic halo, celestial sacred geometry patterns, platinum and rainbow metallic sheen, surrounded by cosmic starfield and divine lightning, ultra-HD maximum detail, the most spectacular creature illustration ever created, jaw-dropping legendary quality',
+    // ── SPECIAL ILLUSTRATION RARE (SIR) card art style ──
+    // The pinnacle of TCG illustration. Same full-bleed as IR but DOUBLED
+    // in both character AND background detail. The environment is as richly
+    // rendered as the creature — you could study the background for minutes.
+    // Ultra-painterly with chromatic energy and chromatic aberration effects.
+    // Background features layered detailed environmental storytelling: weather,
+    // architecture, nature, cosmic elements — all painted with museum-quality
+    // brushwork. Think SIR Charizard ex, SIR Gardevoir ex from Scarlet & Violet.
+    // Golden shimmer treatment, prismatic chromatic foil aura.
+    strengthModifier: 'Pokemon TCG Special Illustration Rare SIR card art, the absolute pinnacle of Pokemon card illustration, full-bleed masterpiece painting filling every pixel edge to edge, hyper-detailed creature AND equally hyper-detailed immersive environment background with stunning depth (you could study the background for minutes), ultra-painterly museum-quality brushwork with chromatic energy halos and rainbow chromatic aberration, the creature radiates golden prismatic light with a divine transcendent aura, layered environmental storytelling behind it (weather systems, cosmic elements, sacred geometry, elemental destruction all co-existing), breathtaking cinematic composition, every square centimeter packed with exquisite detail, this is a $200 chase card illustration, the most spectacular Pokemon TCG artwork ever created',
   },
 }
 
@@ -311,13 +336,25 @@ export function buildEvolutionPrompt(
   // STYLE-FIRST prompt: leading with art style forces the model to generate
   // anime/cartoon artwork regardless of what photo was uploaded.
   // At strength 0.92, the input image provides only loose color + composition hints.
+  //
+  // Art style prefix is tiered to match real TCG illustration philosophy:
+  //   starter  → Common: contained box art, clean and simple
+  //   evolved  → Rare Holo: contained but richer, dynamic pose
+  //   champion → Illustration Rare: full-bleed painterly scene storytelling
+  //   legendary → SIR: full-bleed hyper-detail masterpiece, both character AND background
+  const artStylePrefix =
+    tier === 'legendary'
+      ? 'Official Pokemon TCG Special Illustration Rare SIR masterpiece, anime art style with ultra-painterly brushwork,'
+    : tier === 'champion'
+      ? 'Official Pokemon TCG Illustration Rare IR full-bleed art, painterly anime illustration style,'
+    : tier === 'evolved'
+      ? 'Official Pokemon TCG Rare Holo card illustration, anime art style, vibrant digital painting,'
+      : 'Official Pokemon TCG Common card illustration, clean anime art style, simple digital painting,'
+
   return [
     // Art style must come first — this dominates generation
-    'Official Pokemon TCG card illustration, anime art style, cartoon creature character design,',
-    'digital painting, vibrant saturated colors, expressive cute eyes, clean anime linework,',
-    isHighRarity
-      ? 'Special Illustration Rare full-bleed cinematic composition, painterly brushwork, dramatic lighting,'
-      : 'clean card art composition, soft elemental background lighting,',
+    artStylePrefix,
+    'cartoon creature character design, expressive cute eyes, clean anime linework,',
 
     // Smart visual inspiration from the uploaded image
     visualInspo,
@@ -329,15 +366,17 @@ export function buildEvolutionPrompt(
     // Element visual style
     `${el.promptKeywords},`,
 
-    // Tier-specific art direction
+    // Tier-specific art direction (now accurately describes the correct TCG illustration tier)
     `${t.strengthModifier},`,
 
     // Quality + anti-realism
     'professional trading card game artwork, fantasy creature illustration,',
     'no humans, no photorealism, no photographs, illustrated cartoon character only,',
-    isHighRarity
-      ? 'immersive elemental environment background, artwork bleeds to edges, 4K ultra detailed'
-      : 'dark elemental background, high quality digital art',
+    tier === 'legendary'
+      ? 'the background environment is as detailed as the character itself, every inch of the card is a masterwork painting, 4K ultra detail'
+    : tier === 'champion'
+      ? 'full painterly environment background bleeds to every edge, cohesive artistic scene, high quality'
+      : 'high quality digital art, clean professional illustration',
   ].join(' ')
 }
 
