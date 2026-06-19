@@ -327,9 +327,8 @@ function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
 
     if (tier === 'legendary') {
       matRef.current.emissiveIntensity = 0.04 + fresnel * 0.08
-    } else if (tier === 'champion') {
-      matRef.current.emissiveIntensity = 0.02 + fresnel * 0.04
     }
+    // champion: no emissive update — remove purple bloom on tilt
   })
 
   return (
@@ -344,31 +343,40 @@ function HoloMaterial({ texture, tier, meshRef }: HoloProps) {
       iridescenceIOR={1.4}
       iridescenceThicknessRange={[100, 300]}
       emissive={new THREE.Color(
-        tier === 'legendary' ? '#fbbf24' :
-        tier === 'champion'  ? '#a855f7' : '#000000'
+        tier === 'legendary' ? '#fbbf24' : '#000000'
+        // champion: no purple emissive — it was causing the persistent purple tint
       )}
-      emissiveIntensity={0.04}
-      envMapIntensity={tier === 'legendary' ? 1.2 : tier === 'champion' ? 0.8 : tier === 'evolved' ? 0.5 : 0.3}
+      emissiveIntensity={tier === 'legendary' ? 0.04 : 0}
+      envMapIntensity={tier === 'legendary' ? 1.0 : tier === 'champion' ? 0.55 : tier === 'evolved' ? 0.35 : 0.2}
     />
   )
 }
 
 // ─── Rarity light rig ─────────────────────────────────────────────────────────
+//
+// Design rule:
+//   • Front key light → neutral warm-white: illuminates the card art faithfully
+//   • Side/back fills → element color (subtle): adds type atmosphere
+//   • Rarity accent → ONLY for legendary (gold rim light); champion gets NO tint light
+// This prevents champion's purple from washing over the card artwork.
 
 function RarityLights({ tier, element }: { tier: string; element: string }) {
   const elColor = ELEMENTS[element as keyof typeof ELEMENTS].color
-  const rarityColor = TIERS[tier as keyof typeof TIERS].color
-  const intensity = { starter: 0.3, evolved: 0.5, champion: 0.9, legendary: 1.4 }[tier] ?? 0.5
 
   return (
     <>
-      <pointLight color={elColor}     intensity={intensity}       position={[0, 0, 3]}    distance={8} />
-      <pointLight color={rarityColor} intensity={intensity * 0.5} position={[2.5, -1, 1]} distance={6} />
-      <pointLight color={rarityColor} intensity={intensity * 0.3} position={[-2, 2, 1]}   distance={5} />
+      {/* Neutral key light — always white so card art reads true-color */}
+      <pointLight color="#ffffff" intensity={0.9} position={[0, 0.5, 3.5]} distance={10} />
+
+      {/* Element fill — side position, low intensity, adds type atmosphere */}
+      <pointLight color={elColor} intensity={0.35} position={[3, 1, 1.5]}  distance={7} />
+      <pointLight color={elColor} intensity={0.18} position={[-2, -1, 1.5]} distance={6} />
+
+      {/* Legendary-only: gold rim light from above */}
       {tier === 'legendary' && (
         <>
-          <pointLight color="#fbbf24" intensity={0.8} position={[0, 3, 0]}   distance={6} />
-          <pointLight color="#f472b6" intensity={0.4} position={[-3, -2, 1]} distance={5} />
+          <pointLight color="#fbbf24" intensity={0.9} position={[0, 4, 1]}    distance={7} />
+          <pointLight color="#f97316" intensity={0.4} position={[-3, -2, 1.5]} distance={5} />
         </>
       )}
     </>
@@ -424,7 +432,8 @@ function Card3DMesh({ card }: { card: CollectionCard }) {
           roughness={0.15}
           metalness={card.tier === 'legendary' ? 0.9 : 0.5}
           emissive={rarityColor}
-          emissiveIntensity={card.tier === 'legendary' ? 0.4 : card.tier === 'champion' ? 0.2 : 0.05}
+          // Only legendary gets a glow edge; champion edge is metallic but NOT purple-glowing
+          emissiveIntensity={card.tier === 'legendary' ? 0.35 : 0}
         />
       </RoundedBox>
 
@@ -535,9 +544,10 @@ export default function Card3DViewer({ card, onClose }: { card: CollectionCard; 
           style={{ background: 'transparent' }}
         >
           <Suspense fallback={<LoadOverlay card={card} />}>
-            <ambientLight intensity={0.55} />
-            <directionalLight position={[3, 4, 3]}  intensity={1.5} />
-            <directionalLight position={[-3, -2, 2]} intensity={0.5} color="#8080ff" />
+            <ambientLight intensity={0.45} />
+            <directionalLight position={[3, 4, 3]}  intensity={1.2} />
+            {/* Neutral fill from below — no blue/purple tint */}
+            <directionalLight position={[-3, -2, 2]} intensity={0.3} />
             <Environment preset={card.tier === 'legendary' ? 'sunset' : 'city'} />
             <Card3DMesh card={card} />
             <OrbitControls

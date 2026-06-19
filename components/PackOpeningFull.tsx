@@ -408,6 +408,25 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
         return
       }
 
+      // ── Analyze image ONCE and use for all 10 cards ───────────────────────
+      // This gives the AI a text description of the uploaded image so it can
+      // preserve colors, body shape, and distinctive features in every card.
+      // Non-fatal: generation continues even if analysis fails or is unavailable.
+      let imageDescription = ''
+      try {
+        const analyzeRes = await fetch('/api/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: base64 }),
+        })
+        if (analyzeRes.ok) {
+          const analyzeData = await analyzeRes.json()
+          imageDescription = analyzeData.description ?? ''
+        }
+      } catch {
+        // Silently skip — cards will still generate without description
+      }
+
       for (let i = 0; i < PACK_COUNT; i++) {
         const idx = i
         await sleep(idx * STAGGER_MS)
@@ -418,7 +437,12 @@ export default function PackOpeningFull({ element, petName, petFile, onAllComple
             const res  = await fetch('/api/evolve', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ imageBase64: base64, element, petName: petName.trim() || 'Fluffy' }),
+              body: JSON.stringify({
+                imageBase64: base64,
+                element,
+                petName: petName.trim() || 'Fluffy',
+                imageDescription,
+              }),
             })
             const data = await res.json()
             if (!res.ok || data.error) throw new Error(data.error || 'Failed')

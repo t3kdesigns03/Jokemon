@@ -288,13 +288,25 @@ export function rollEvolutionTier(): EvolutionTier {
   return 'legendary'
 }
 
-export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petName = 'Fluffy'): string {
+export function buildEvolutionPrompt(
+  element: Element,
+  tier: EvolutionTier,
+  petName = 'Fluffy',
+  imageDescription?: string,
+): string {
   const el = ELEMENTS[element]
   const t = TIERS[tier]
   const isHighRarity = tier === 'champion' || tier === 'legendary'
   const safeName = petName.trim() || 'Fluffy'
   const vibeDesc = analyzeNameVibe(safeName)
   const species = getSpeciesName(element, tier)
+
+  // Build the visual inspiration clause from the image description.
+  // This tells the model what features to carry forward into the cartoon creature
+  // (body shape, color palette, distinctive markings) without anchoring to realism.
+  const visualInspo = imageDescription
+    ? `visually inspired by: ${imageDescription} — reimagined as a JokeMon cartoon creature with those colors and body shape,`
+    : ''
 
   // STYLE-FIRST prompt: leading with art style forces the model to generate
   // anime/cartoon artwork regardless of what photo was uploaded.
@@ -306,6 +318,9 @@ export function buildEvolutionPrompt(element: Element, tier: EvolutionTier, petN
     isHighRarity
       ? 'Special Illustration Rare full-bleed cinematic composition, painterly brushwork, dramatic lighting,'
       : 'clean card art composition, soft elemental background lighting,',
+
+    // Smart visual inspiration from the uploaded image
+    visualInspo,
 
     // Character identity
     `a ${t.rarity.toLowerCase()} creature named "${safeName}" the ${species},`,
