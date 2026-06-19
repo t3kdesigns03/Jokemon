@@ -317,6 +317,7 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
   const tierCfg    = TIERS[tier]
   const elementCfg = ELEMENTS[element]
   const [imgLoaded, setImgLoaded]     = useState(false)
+  const [imgError, setImgError]       = useState(false)
   const [showSparkles, setShowSparkles] = useState(false)
   const proxyUrl   = `/api/proxy-image?url=${encodeURIComponent(joKemonImageUrl)}`
   const cardWidth  = compact ? 160 : 'min(320px, calc(100vw - 40px))'
@@ -414,19 +415,46 @@ export default function JokeMonCard({ card, compact = false, onClick, interactiv
         <img
           src={proxyUrl} alt={displayName}
           onLoad={() => setImgLoaded(true)}
-          onError={e => {
-            // Image failed — show element emoji as fallback so card isn't a black box
-            const el = e.currentTarget.parentElement
-            if (el) el.style.background = '#0a0a14'
-            e.currentTarget.style.display = 'none'
-            setImgLoaded(true)
-          }}
+          onError={() => { setImgError(true); setImgLoaded(true) }}
           style={{
-            width: '100%', height: '100%', objectFit: 'cover', display: 'block',
-            opacity: imgLoaded ? 1 : 0, transition: 'opacity 0.4s ease',
+            width: '100%', height: '100%', objectFit: 'cover', display: imgError ? 'none' : 'block',
+            opacity: imgLoaded && !imgError ? 1 : 0, transition: 'opacity 0.4s ease',
             filter: imgLoaded ? cfg.imageFilter : 'none',
           }}
         />
+
+        {/* ── Expired / failed image fallback ── */}
+        {imgError && (
+          <div style={{
+            position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', gap: compact ? 4 : 8,
+            background: `radial-gradient(ellipse at 50% 40%, ${elementCfg.color}22 0%, #0a0a14 70%)`,
+          }}>
+            {/* Decorative element circle */}
+            <motion.div
+              animate={{ scale: [1, 1.08, 1], opacity: [0.55, 0.85, 0.55] }}
+              transition={{ duration: 2.4, repeat: Infinity }}
+              style={{
+                width: compact ? 38 : 64, height: compact ? 38 : 64, borderRadius: '50%',
+                background: `radial-gradient(circle at 40% 35%, ${elementCfg.color}55, ${elementCfg.color}11)`,
+                border: `1.5px solid ${elementCfg.color}44`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: compact ? '1.3em' : '2em',
+                boxShadow: `0 0 ${compact ? 12 : 22}px ${elementCfg.color}44`,
+              }}
+            >
+              {elementCfg.emoji}
+            </motion.div>
+            {!compact && (
+              <div style={{
+                fontSize: '0.45em', fontWeight: 700, letterSpacing: '0.12em',
+                textTransform: 'uppercase', color: `${elementCfg.color}88`,
+              }}>
+                {tierCfg.rarity} · {elementCfg.label}
+              </div>
+            )}
+          </div>
+        )}
 
         {cfg.isEpic && (
           <motion.div

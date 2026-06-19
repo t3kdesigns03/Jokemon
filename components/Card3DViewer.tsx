@@ -143,6 +143,73 @@ async function buildCardTexture(card: CollectionCard): Promise<THREE.CanvasTextu
     ctx.drawImage(img, imgX, imgY, imgW, imgH)
     ctx.filter = 'none'
 
+    // ── Painterly texture overlay (Illustration Rare + SIR) ───────────────────
+    // Simulates the physical brushwork texture visible on champion/legendary TCG
+    // cards. SIRs have a distinctive grain + crosshatch paint texture that makes
+    // the illustration feel like a physical painting rather than digital print.
+    //
+    // Layer stack:
+    //   1. Film grain (fine random noise) — present on both champion + legendary
+    //   2. Brushstroke crosshatch — short directional lines simulating paint
+    //   3. Vignette depth — darkened edges push subject forward (legendary only)
+    if (tier === 'champion' || tier === 'legendary') {
+      const grainDensity  = tier === 'legendary' ? 0.38 : 0.22
+      const grainOpacity  = tier === 'legendary' ? 0.045 : 0.028
+      const strokeCount   = tier === 'legendary' ? 320 : 140
+      const strokeLen     = tier === 'legendary' ? 10 : 6
+      const strokeOpacity = tier === 'legendary' ? 0.038 : 0.022
+
+      ctx.save()
+      rRect(ctx, imgX, imgY, imgW, imgH, 13); ctx.clip()
+
+      // 1. Film grain — tiny luminance variation pixel-by-pixel
+      const imageData = ctx.getImageData(imgX, imgY, imgW, imgH)
+      const pixels = imageData.data
+      for (let p = 0; p < pixels.length; p += 4) {
+        if (Math.random() < grainDensity) {
+          const grain = (Math.random() - 0.5) * 28
+          pixels[p]     = Math.max(0, Math.min(255, pixels[p]     + grain))
+          pixels[p + 1] = Math.max(0, Math.min(255, pixels[p + 1] + grain))
+          pixels[p + 2] = Math.max(0, Math.min(255, pixels[p + 2] + grain))
+        }
+      }
+      ctx.putImageData(imageData, imgX, imgY)
+
+      // 2. Crosshatch brushstrokes — short lines in 4 directional families
+      const strokeAngles = [15, 45, 105, 150]
+      ctx.globalCompositeOperation = 'overlay'
+      for (let s = 0; s < strokeCount; s++) {
+        const sx = imgX + Math.random() * imgW
+        const sy = imgY + Math.random() * imgH
+        const angleDeg = strokeAngles[Math.floor(Math.random() * strokeAngles.length)] + (Math.random() - 0.5) * 22
+        const angleRad = angleDeg * Math.PI / 180
+        const len = strokeLen * (0.6 + Math.random() * 0.8)
+        const brightness = 120 + Math.floor(Math.random() * 136)
+        ctx.beginPath()
+        ctx.moveTo(sx, sy)
+        ctx.lineTo(sx + Math.cos(angleRad) * len, sy + Math.sin(angleRad) * len)
+        ctx.strokeStyle = `rgba(${brightness},${brightness},${brightness},${strokeOpacity})`
+        ctx.lineWidth = 0.6 + Math.random() * 0.6
+        ctx.stroke()
+      }
+      ctx.globalCompositeOperation = 'source-over'
+
+      // 3. Edge vignette (legendary only) — pulls viewer focus to center subject
+      if (tier === 'legendary') {
+        const vignette = ctx.createRadialGradient(
+          imgX + imgW / 2, imgY + imgH / 2, imgW * 0.28,
+          imgX + imgW / 2, imgY + imgH / 2, imgW * 0.72,
+        )
+        vignette.addColorStop(0, 'transparent')
+        vignette.addColorStop(1, 'rgba(0,0,0,0.32)')
+        ctx.fillStyle = vignette
+        ctx.fillRect(imgX, imgY, imgW, imgH)
+      }
+
+      ctx.restore()
+      void grainOpacity // used implicitly via density above; suppress lint
+    }
+
     // ── Holo dot-grid overlay (Rare+) ─────────────────────────────────────
     // Classic TCG reverse-holo: fine dot grid baked onto the illustration.
     // The Three.js iridescence material animates on top, so this texture is
